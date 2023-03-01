@@ -1,0 +1,49 @@
+Correcting unsatisfcatory segmentation results
+==============================================
+
+You may run into the situation where a segmentation model produces
+poor results delineating certain difficult objects. There are currently 
+two methods to rectify this situation which can be done independently or
+combined.
+
+Manually annotating ground truth data
+-------------------------------------
+
+The first and simplest way is to provide an accurate ground-truth 
+segmentation mask for the poorly-segmented objects and retrain your 
+model with these included in the training data.
+
+For example, suppose that you have observed serious errors in a test region 
+`bad_AoI.tif` for which you currently do not have ground truth data. You 
+can then manually draw the correct object boundaries in, for example, 
+a shapefile `bad_AoI_ground_truth.shp`. You can then create a new dataset as::
+
+    import gim_cv.datasets as datasets
+
+    corrected_dataset = datasets.Dataset(
+        tag='bad_AoI',
+        spatial_resolution=0.2,
+        image_paths = ['/path/to/bad_AoI.tif'],
+        mask_paths = ['/path/to/bad_AoI_ground_truth.shp'])
+    )
+
+You can then follow the instructions to train a model including this additional 
+dataset described in :doc:`training`.
+
+Using a focal loss function
+---------------------------
+
+The second method is to train your model with a "focal" loss function, i.e. a loss
+function constructed to punish the model especially hard for more serious segmentation errors.
+The outcome of this will likely be that the model learns to perform better on more 
+difficult objects, but may lose some of its discriminating ability on easier examples 
+since they have a smaller relative impact on the loss.
+
+Most focal loss functions have a focal exponent which steepens the slope of the loss function
+further away from zero (i.e. the worse the model performs on a given example). This can be 
+treated as a parameter to tune to find a good compromise.
+
+Currently implemented focal loss functions in are:
+
+    - :py:func:`gim_cv.losses.focal_tversky_loss`
+
