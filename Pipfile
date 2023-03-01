@@ -1,0 +1,31 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+tensorflow = "*"
+matplotlib = "*"
+scipy = "*"
+scikit-learn = "*"
+h5py = "*"
+einops = "*"
+keras = "*"
+gdal = {file = "https://download.lfd.uci.edu/pythonlibs/archived/GDAL-3.4.3-cp311-cp311-win_amd64.whl"}
+pandas = "*"
+geopandas = "*"
+numpy = "*"
+albumentations = "*"
+tqdm = "*"
+scikit-image = "*"
+cached-property = "*"
+regex = "*"
+pyyaml = "*"
+aiohttp = "*"
+dask = "*"
+keras-tuner = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
