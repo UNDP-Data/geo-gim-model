@@ -29,6 +29,7 @@ sqlalchemy = "*"
 rasterio = "*"
 scrapy = "*"
 aiofiles = "*"
+twine = "*"
 
 [dev-packages]
 

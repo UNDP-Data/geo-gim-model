@@ -13,14 +13,19 @@ RUN apt-get install python3  python3-pip
 # set the default directory in container
 WORKDIR /home/root/
 
-COPY envs/*.yml ./envs/
 
 COPY config.yml /home/root/config.yml
 
+# copy the requirements file to the container
 COPY requirements.txt /home/root/requirements.txt
 
+# set the CONFIG_FILE environment variables
 ENV CONFIG_FILE /home/root/config.yml
 
+# install the requirements from the requirements file
 RUN pip3 install -r requirements.txt
+
+# install gim-cv package from pypi
+RUN pip3 install gim-cv
 
 COPY . /home/root/
