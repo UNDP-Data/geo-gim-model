@@ -8,7 +8,11 @@ RUN add-apt-repository ppa:ubuntugis/ppa
 
 RUN apt-get install -y gdal-bin
 
-RUN apt-get install python3  python3-pip
+RUN apt-get install python3 python3-pip
+
+RUN python3 -m pip install --upgrade pip
+
+RUN python3 -m pip install -e git+https://github.com/UNDP-Data/geo-gim-model.git
 
 # set the default directory in container
 WORKDIR /home/root/
