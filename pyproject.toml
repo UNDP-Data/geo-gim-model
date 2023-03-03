@@ -1,9 +1,10 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gim_cv"
+name = "gim-cv"
+
 version = "0.0.4"
 description = "GIM Model"
 readme = "README.md"
@@ -30,5 +31,8 @@ dependencies = [
     'pyyaml',
 ]
 
-[tool.setuptools]
-py-modules = []
+[tool.setuptools.dynamic]
+version = {attr = "gim_cv.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["./"]
