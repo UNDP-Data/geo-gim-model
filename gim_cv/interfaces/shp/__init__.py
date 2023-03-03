@@ -1,12 +1,14 @@
 import importlib
-import timbermafia as tm
+
+from osgeo import ogr
+
 import gim_cv.config as cfg
 
 from pathlib import Path
 
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def add_id_column_to_shp_file(shp_file:str, overwrite:bool=True) -> None:
@@ -27,11 +29,11 @@ def add_id_column_to_shp_file(shp_file:str, overwrite:bool=True) -> None:
     fldDef = ogr.FieldDefn('FID', ogr.OFTInteger64)
     # if it's not there
     if layer.GetLayerDefn().GetFieldIndex("FID") < 0:
-        log.debug("creating FID column")
+        logger.debug("creating FID column")
         layer.CreateField(fldDef)
     # skip creation if present, also return now if no overwrite
     else:
-        log.debug("skipping FID column creation...")
+        logger.debug("skipping FID column creation...")
         if not overwrite:
             return
     # write FID values to shp file
@@ -50,7 +52,7 @@ def add_id_column_to_shp_file(shp_file:str, overwrite:bool=True) -> None:
 BinaryMaskShapeReader = getattr(importlib.import_module(f'gim_cv.interfaces.shp.{cfg.shp_reader}'), 'BinaryMaskShapeReader')
 LabelledMaskShapeReader = getattr(importlib.import_module(f'gim_cv.interfaces.shp.{cfg.shp_reader}'), 'LabelledMaskShapeReader')
 
-class BinaryMaskReader(BinaryMaskShapeReader, tm.Logged):
+class BinaryMaskReader(BinaryMaskShapeReader):
     def __init__(self, *args, **kwargs):
         if 'cache_dir' not in kwargs:
             kwargs['cache_dir'] = cfg.input_binary_mask_array_dir
@@ -59,7 +61,7 @@ class BinaryMaskReader(BinaryMaskShapeReader, tm.Logged):
         super().__init__(*args, **kwargs)
 
 
-class LabelledMaskReader(LabelledMaskShapeReader, tm.Logged):
+class LabelledMaskReader(LabelledMaskShapeReader):
     def __init__(self, *args, **kwargs):
         if 'cache_dir' not in kwargs:
             kwargs['cache_dir'] = cfg.input_labelled_mask_array_dir

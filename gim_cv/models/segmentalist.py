@@ -4,8 +4,6 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.layers as layers
-#keras = tf.keras
-#layers = keras.layers
 
 import gim_cv.losses as losses
 import gim_cv.models.blocks as blocks
@@ -328,7 +326,7 @@ class Segmentalist(keras.Model):
         return self.final_act(final_out)
     
     @classmethod
-    def load_from_metadata(cls, row : pd.Series, val : bool = True):
+    def load_from_metadata(cls, row : pd.Series, val : bool = True, opt=None):
         """
         Loads a Segmentalist with the weights loaded from the checkpoint with 
         the lowest validation loss.
@@ -383,8 +381,8 @@ class Segmentalist(keras.Model):
                 learning_rate=row.lr_init, beta_1=0.9, beta_2=0.999, amsgrad=False
             ) # check out RADAM?
         elif row.optimiser == 'ranger':
-            radam = tfa.optimizers.RectifiedAdam(lr=row.lr_init, min_lr=row.lr_min)
-            opt = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
+            radam = tf.optimizers.RectifiedAdam(lr=row.lr_init, min_lr=row.lr_min)
+            opt = tf.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
         else:
             raise ValueError(f"Optimiser {opt} not understood")
         # select metrics

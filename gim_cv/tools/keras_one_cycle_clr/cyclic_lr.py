@@ -1,3 +1,8 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 try:
     import tensorflow.keras as keras
     import tensorflow.keras.backend as K
@@ -7,9 +12,8 @@ except:
 import numpy as np
 import matplotlib.pyplot as plt
 from .utils import set_lr, set_momentum
-import timbermafia as tm
 
-class CLR(keras.callbacks.Callback, tm.Logged):
+class CLR(keras.callbacks.Callback):
     """
     Based off https://github.com/keras-team/keras-contrib/blob/master/keras_contrib/callbacks/cyclical_learning_rate.py.
 
@@ -137,7 +141,7 @@ class CLR(keras.callbacks.Callback, tm.Logged):
     def on_train_batch_end(self, batch, logs={}):
 
         if self.verbose:
-            log.debug("lr={:.2e}".format(self.get_current_lr()), ",", "m={:.2e}".format(self.get_current_momentum()))
+            logger.debug("lr={:.2e}".format(self.get_current_lr()), ",", "m={:.2e}".format(self.get_current_momentum()))
 
         # record according to record_frq
         if np.mod(int(self.current_iter), self.record_frq) == 0:

@@ -1,25 +1,19 @@
 """ interfaces/write.py
 """
-import shutil
-import abc
-import dask.array as da
-import timbermafia as tm
-
-from pathlib import Path
-from typing import Union, Any
-
 import logging
+
+from sklearn.base import BaseEstimator
 
 log = logging.getLogger(__name__)
 
 
 
-class BaseMaskWriter(tm.Logged):
+class BaseMaskWriter:
     pass
 
-class InferenceDataset(tm.Logged):
+class InferenceDataset:
     def __init__(self, untile_method='simple'):
-        output_filename +=
+
         self.untiler = get_untiler(self.untile_method)
     def run_inference(self, model):
         tiled_input_array = input_pipeline.fit_transform(img.arr)
@@ -29,7 +23,7 @@ class InferenceDataset(tm.Logged):
 # pseudocode for solution
 tiler = SimpleTiler()
 
-class Infertiler(BaseEstimator, tm.Logged):
+class Infertiler(BaseEstimator):
     def __init__(self, model, tiler):
         self.model = model
         self.tiler = tiler
@@ -44,5 +38,5 @@ class Infertiler(BaseEstimator, tm.Logged):
 
 
 untiler = SimpleUntiler()
-#untiler = HannUntiler()
+# untiler = HannUntiler()
 untiler.fit_transform(tiled_array)

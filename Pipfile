@@ -11,7 +11,6 @@ scikit-learn = "*"
 h5py = "*"
 einops = "*"
 keras = "*"
-gdal = {file = "https://download.lfd.uci.edu/pythonlibs/archived/GDAL-3.4.3-cp311-cp311-win_amd64.whl"}
 pandas = "*"
 geopandas = "*"
 numpy = "*"
@@ -24,6 +23,12 @@ pyyaml = "*"
 aiohttp = "*"
 dask = "*"
 keras-tuner = "*"
+setuptools = "*"
+build = "*"
+sqlalchemy = "*"
+rasterio = "*"
+scrapy = "*"
+aiofiles = "*"
 
 [dev-packages]
 

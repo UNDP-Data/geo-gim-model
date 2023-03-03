@@ -5,25 +5,21 @@ Provides custom kerastuner.Tuners for hyperparameter scans during model training
 """
 import collections
 import copy
-
-import numpy as np
-import kerastuner as kt
-
-import gim_cv.losses as losses
-import gim_cv.tools.keras_one_cycle_clr as clr
-
-from tensorflow import keras
-from kerastuner.tuners import Hyperband
-from kerastuner.engine import tuner_utils
-import timbermafia as tm
 import logging
 
-log = logging.getLogger(__name__)
+import numpy as np
+from kerastuner.engine import tuner_utils
+from kerastuner.tuners import Hyperband
+from tensorflow import keras
+
+import gim_cv.tools.keras_one_cycle_clr as clr
+
+logger = logging.getLogger(__name__)
 
 MOMENTUM_RANGE = (0.95, 0.85)
 
 
-class HyperbandOCP(Hyperband, tm.Logged):
+class HyperbandOCP(Hyperband):
     """
     Hyperband tuner with one-cycle policy learning-rate-adjusting callback
 

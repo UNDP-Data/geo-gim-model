@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gim_cv"
+version = "0.0.1"
+description = "GIM Model"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    'tensorflow',
+    'numpy',
+    'scipy',
+    'matplotlib',
+    'scikit-learn',
+    'pandas',
+    'h5py',
+    'einops',
+    'scipy',
+    'keras-tuner',
+    'dask',
+    'keras',
+    'geopandas',
+    'numpy',
+    'albumentations',
+    'tqdm',
+    'scikit-image',
+    'aiohttp',
+    'pyyaml',
+]

@@ -1,25 +1,15 @@
-import sys
-import hashlib
-
-import timbermafia as tm
 import numpy as np
 import dask.array as da
-
-import gim_cv.config as cfg
-
 from typing import Union
-from pathlib import Path
-
 from osgeo import gdal, osr, ogr
-
 from gim_cv.interfaces.base import BaseShapeInterface
 
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-class ShapeReader(BaseShapeInterface, tm.Logged):
+class ShapeReader(BaseShapeInterface):
     """ Base class for reading a shapefile located at some src_path.
 
         Open/closing with GDAL exposes features in the shape_data attribute
@@ -67,7 +57,7 @@ class ShapeReader(BaseShapeInterface, tm.Logged):
         """ Shortcut property to get feature count from layer in shapefile """
         return self.layer.GetFeatureCount()
 
-    def add_FID_column(overwrite:bool=True) -> None:
+    def add_FID_column(self, overwrite:bool=True) -> None:
         """ Write the FID value explicitly to a shapefile database
             (rather than inferring this automatically) as a new column
 
@@ -90,7 +80,7 @@ class ShapeReader(BaseShapeInterface, tm.Logged):
             if not overwrite:
                 return
         # write FID values to shp file
-        for Ft in layer:
+        for Ft in self.layer:
             ThisID = int(Ft.GetFID())
             Ft.SetField('FID', ThisID)          # Write the FID to the ID field
             self.layer.SetFeature(Ft)               # update the feature
@@ -200,7 +190,7 @@ def rasterise_shapefile(layer,
     github.com/terrai/rastercube/blob/master/rastercube/datasources/
     shputils.py
     """
-    log.debug("Creating mask array...")
+    logger.debug("Creating mask array...")
     # create a new raster in memory
     mem_drv = gdal.GetDriverByName('MEM')
     mem_raster = mem_drv.Create(

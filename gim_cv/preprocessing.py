@@ -13,27 +13,17 @@ import random
 
 import numpy as np
 import dask.array as da
-import rasterio
-import timbermafia as tm
-import cv2
 import albumentations as A
-
 from functools import partial
-
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline#, FeatureUnion#, make_pipeline
-from sklearn.preprocessing import FunctionTransformer#, minmax_scale, scale, OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
-from skimage import data
 from skimage.transform import rescale, resize, downscale_local_mean
 from tensorflow.keras.preprocessing import image
 
-
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-#from ImageDataAugmentor.image_data_augmentor import *
 from albumentations.core.transforms_interface import ImageOnlyTransform
 
 RESAMPLE_TOLERANCE = 0.01 # don't resample if spatial resolutions are within 1%
@@ -402,7 +392,7 @@ def get_binary_mask_training_pipeline(window_dims=(256,256),
     return pipeline
 
 
-class BinariserRGB(TransformerMixin, BaseEstimator, tm.Logged):
+class BinariserRGB(TransformerMixin, BaseEstimator):
     """
     Transformer which binarises an image/mask where channels match target_rgb
 
@@ -460,7 +450,7 @@ def rescale_image_array(array, sf=0.5, preserve_int=True):
     return rescaled
 
 
-class ImageResampler(TransformerMixin, BaseEstimator, tm.Logged):
+class ImageResampler(TransformerMixin, BaseEstimator):
     """
     Transformer for applying skimage.rescale to an image-like dask array
 
@@ -536,7 +526,7 @@ class ImageResampler(TransformerMixin, BaseEstimator, tm.Logged):
         return rescaled
 
 
-class Tiler(BaseEstimator, TransformerMixin, tm.Logged):
+class Tiler(BaseEstimator, TransformerMixin):
     """
     Transformer batching a (H, W, C) image array into (B, h, w, C); h, w < H, W
 
@@ -720,7 +710,7 @@ class Tiler(BaseEstimator, TransformerMixin, tm.Logged):
 
 
 # version with assertions
-class Tiler(BaseEstimator, TransformerMixin, tm.Logged):
+class Tiler(BaseEstimator, TransformerMixin):
     """
     Transformer batching a (H, W, C) image array into (B, h, w, C); h, w < H, W
 
@@ -933,7 +923,7 @@ class Tiler(BaseEstimator, TransformerMixin, tm.Logged):
         return lib.concatenate([c1, c2], axis=1)
 
     
-class OverlappingTiler(TransformerMixin, BaseEstimator, tm.Logged):
+class OverlappingTiler(TransformerMixin, BaseEstimator):
     """
     Version of Tiler with half-window-size overlap.
     
@@ -1008,7 +998,7 @@ class OverlappingTiler(TransformerMixin, BaseEstimator, tm.Logged):
         return self.main_tiler.inverse_transform(X[:self.X_main_length_])    
 
 #combined_pipeline = FeatureUnion(transformer_list=[('pipeline_1', pl1 ), ('pipeline_2', pl2 )])
-class WindowFitter(BaseEstimator, TransformerMixin, tm.Logged):
+class WindowFitter(BaseEstimator, TransformerMixin):
     """
     Transformer to crop an image-like array (along the first two axes)
 
@@ -1071,7 +1061,7 @@ class WindowFitter(BaseEstimator, TransformerMixin, tm.Logged):
 
     
 
-class TileStacker(BaseEstimator, TransformerMixin, tm.Logged):
+class TileStacker(BaseEstimator, TransformerMixin):
     """
     Transformer batching a (H, W, C) image array into (B, h, w, C); h, w < H, W
 
@@ -1191,7 +1181,7 @@ class TileStacker(BaseEstimator, TransformerMixin, tm.Logged):
         return X_
 
 
-class DimensionAdder(BaseEstimator, TransformerMixin, tm.Logged):
+class DimensionAdder(BaseEstimator, TransformerMixin):
     """
     Simple Transformer to add a channel dimension to an array if it's 2D
 
@@ -1211,7 +1201,7 @@ class DimensionAdder(BaseEstimator, TransformerMixin, tm.Logged):
             raise ValueError("X should have two (row/col) or three dimensions (+channel)")
 
 
-class SimpleInputScaler(BaseEstimator, TransformerMixin, tm.Logged):
+class SimpleInputScaler(BaseEstimator, TransformerMixin):
     """
     Simple Transformer wrapper for scaling an array
 
@@ -1228,7 +1218,7 @@ class SimpleInputScaler(BaseEstimator, TransformerMixin, tm.Logged):
         return X * self.sf
 
 
-class Float32er(BaseEstimator, TransformerMixin, tm.Logged):
+class Float32er(BaseEstimator, TransformerMixin):
     """
     Simple Transformer wrapper for casting an array to 32-bit float
     """
@@ -1238,7 +1228,7 @@ class Float32er(BaseEstimator, TransformerMixin, tm.Logged):
         return X.astype(np.float32)
 
 
-class SynchronisedShuffler(BaseEstimator, TransformerMixin, tm.Logged):
+class SynchronisedShuffler(BaseEstimator, TransformerMixin):
     """
     Transformer to (un)shuffle array along axis 0 with a seeded permutation
 
@@ -1283,7 +1273,7 @@ class SynchronisedShuffler(BaseEstimator, TransformerMixin, tm.Logged):
         return X_
 
 
-class ChunkBatchAligner(TransformerMixin, BaseEstimator, tm.Logged):
+class ChunkBatchAligner(TransformerMixin, BaseEstimator):
     """
     Transformer to rechunk an array along axis 0 so 1 chunk = M * batch_size
 
@@ -1321,7 +1311,7 @@ class ChunkBatchAligner(TransformerMixin, BaseEstimator, tm.Logged):
         #return X
 
 
-class Rechunker(BaseEstimator, TransformerMixin, tm.Logged):
+class Rechunker(BaseEstimator, TransformerMixin):
     """
     Transformer to adjust size of dask chunks between computations
 

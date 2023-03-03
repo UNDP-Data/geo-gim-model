@@ -3,13 +3,12 @@
     Functions that are used to support preprocessing or data transformation
     operations, usually some kind of dask array acrobatics.
 """
-import gc
 import numpy as np
 import dask.array as da
 
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def get_full_blocks(X):
@@ -86,7 +85,7 @@ def shuffle_blocks(X):
         The input array with blocks reordered by a random permutation
     """
     blk_inds = list(np.ndindex(X.numblocks))
-    log.debug("Shuffling blocks in dask array...")
+    logger.debug("Shuffling blocks in dask array...")
     rand_perm = np.random.permutation(len(blk_inds))
     blk_inds = [blk_inds[p] for p in rand_perm]
     _X = da.concatenate(
@@ -181,7 +180,7 @@ def combine_incomplete_blocks(X):
     # if we formed new full blocks by combining incomplete ones,  stick em together in a new arr
     if extra_full_blocks:
         extra_full_blocks = da.concatenate(extra_full_blocks)
-        log.debug("extra full blocks formed by combining incomplete ones:", extra_full_blocks)
+        logger.debug("extra full blocks formed by combining incomplete ones:", extra_full_blocks)
         full_blocks = da.concatenate([full_blocks, extra_full_blocks], axis=0)
         inc_blocks = da.concatenate([b for b in inc_blocks.blocks if b.chunksize[0] != max(size_chunks)])
     return da.concatenate([full_blocks, inc_blocks])
@@ -214,7 +213,7 @@ def shuffle_blocks_together(X, y):
     blk_inds = list(np.ndindex(X.numblocks))
     if len(blk_inds) == 1:
         return X, y
-    log.debug("Shuffling blocks in dask array pair by same permutation...")
+    logger.debug("Shuffling blocks in dask array pair by same permutation...")
     rand_perm = np.random.permutation(len(blk_inds))
     blk_inds = [blk_inds[p] for p in rand_perm]
     X = da.concatenate(

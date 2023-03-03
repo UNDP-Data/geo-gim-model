@@ -12,19 +12,10 @@ import logging
 
 import aiofiles as aiof
 import aiohttp
-import numpy as np
-import pandas as pd
-import timbermafia as tm
-
-import gim_cv.config as cfg
-
 from pathlib import Path
-from functools import partial
-from tqdm import tqdm
 from zipfile import ZipFile
 
-
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 async def download_images_to_directory(file_urls, target_directory, overwrite=False):
@@ -72,18 +63,18 @@ async def download_worker(queue,
                                        timeout,
                                        use_temp_filename)
         except (aiohttp.ClientResponseError, asyncio.TimeoutError) as e:
-            log.error(f"problem with request to url {url}, moving to DLQ: {e}")
+            logger.error(f"problem with request to url {url}, moving to DLQ: {e}")
             # put args in dlq for other consumers to handle
             await dlq.put((url, save_path))
             await asyncio.sleep(on_fail_slowdown)
-            log.debug(f"notifying task {len(succeeded)} done for "
+            logger.debug(f"notifying task {len(succeeded)} done for "
                       f"{save_path.parts[-1]}")
             queue.task_done()
         else:
             # put successful path in succeeded
             succeeded.append(path)
             # notify queue
-            log.debug(f"notifying task {len(succeeded)} succeeded for "
+            logger.debug(f"notifying task {len(succeeded)} succeeded for "
                       f"{save_path.parts[-1]}")
             queue.task_done()
 
@@ -106,15 +97,15 @@ async def extract_translate_worker(queue, succeeded, overwrite=False, delete_ori
             # put successful path in succeeded
             succeeded.extend(raster_paths)
         except asyncio.CancelledError:
-            log.debug(f"worker {worker_id} exiting...")
+            logger.debug(f"worker {worker_id} exiting...")
         except Exception as e:
-            log.error(e)
-            log.error(f"problem with extract+translate on url {archive_path}")
-            log.error(f"worker {worker_id} notifying queue of failed task")
+            logger.error(e)
+            logger.error(f"problem with extract+translate on url {archive_path}")
+            logger.error(f"worker {worker_id} notifying queue of failed task")
             queue.task_done()
         else:
             # notify queue
-            log.debug(f"worker {worker_id} notifying queue successful task")
+            logger.debug(f"worker {worker_id} notifying queue successful task")
             queue.task_done()
 
 
@@ -123,7 +114,7 @@ async def produce(queue, items):
         # if the queue is full (reached maxsize) this line will be blocked
         # until a consumer will finish processing a url
         await queue.put(item)
-    log.debug("all jobs in queue")
+    logger.debug("all jobs in queue")
 
 
 async def download_file(file_url,
@@ -137,7 +128,7 @@ async def download_file(file_url,
 
         returns the file path upon completion for convenience
     """
-    log.debug(f"download file at: {file_url} to local file: {save_path}")
+    logger.debug(f"download file at: {file_url} to local file: {save_path}")
     async with session.get(file_url, timeout=timeout) as resp:
         total_size = int(resp.headers.get('content-length', 0))
         save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -148,7 +139,7 @@ async def download_file(file_url,
         async with aiof.open(save_path_tmp, "wb") as fd:
             # raise aiohttp.ClientResponseError immediately if invalid response
             resp.raise_for_status()
-            log.debug(f"start writing file {save_path_tmp}")
+            logger.debug(f"start writing file {save_path_tmp}")
             while True:
                 chunk = await resp.content.read(chunk_size)
                 if not chunk:
@@ -156,9 +147,9 @@ async def download_file(file_url,
                 await fd.write(chunk)
         if use_temp_filename:
             mv_cmd = f'mv {save_path_tmp} {save_path}'
-            log.debug(f"moving temporary file...: {mv_cmd}")
+            logger.debug(f"moving temporary file...: {mv_cmd}")
             await open_subprocess(mv_cmd)
-        log.debug(f"download complete: {file_url} -> {save_path}")
+        logger.debug(f"download complete: {file_url} -> {save_path}")
     return save_path
 
 
@@ -166,7 +157,7 @@ async def handle_failed_worker(dlq):
     while True:
         # get a download url and desired file save path
         url, save_path = await dlq.get()
-        log.error(f"Issue with download url {url}. Nothing saved to {save_path}.")
+        logger.error(f"Issue with download url {url}. Nothing saved to {save_path}.")
         dlq.task_done()
 
         
@@ -184,13 +175,13 @@ async def download_files(urls,
         urls = [urls[ix] for ix in not_existing_ixs]
     # if nothing to download, stop here
     if not urls:
-        log.debug("nothing to download: download_files exiting")
+        logger.debug("nothing to download: download_files exiting")
         return
     # cap out max tasks at number of urls
     concurrent_download_tasks = min(concurrent_download_tasks, len(urls))
     # set up queues to hold download task args
     download_queue, download_dlq, succeeded_paths = asyncio.Queue(maxsize=2000), asyncio.Queue(), []
-    log.debug(f"create {concurrent_download_tasks} concurrent download tasks "
+    logger.debug(f"create {concurrent_download_tasks} concurrent download tasks "
               f"for {len(urls)} items")
     # initialise consumers which block at queue.get() until producer fills queue
     dl_queue_consumers = [
@@ -203,7 +194,7 @@ async def download_files(urls,
         )
         for _ in range(concurrent_download_tasks)
     ]
-    log.debug(f"create {concurrent_download_tasks} dlq consumers")
+    logger.debug(f"create {concurrent_download_tasks} dlq consumers")
     # initialise consumers for dlq
     dl_dlq_consumers = [
         asyncio.create_task(
@@ -214,16 +205,16 @@ async def download_files(urls,
     # produce inputs for download tasks: urls and file paths
     producer = await produce(queue=download_queue, items=zip(urls, save_paths))
     # wait for all downloads in queue to get task_done
-    log.debug("waiting for main download queue to complete...")
+    logger.debug("waiting for main download queue to complete...")
     await download_queue.join()
     # and for dlq
-    log.debug("waiting for DLQ")
+    logger.debug("waiting for DLQ")
     await download_dlq.join()
     # cancel all coroutines once queue is empty
-    log.debug("tasks done - terminating download worker coroutines")
+    logger.debug("tasks done - terminating download worker coroutines")
     for consumer_future in dl_queue_consumers + dl_dlq_consumers:
         consumer_future.cancel()
-    log.info(f"download_files completed successfully for "
+    logger.info(f"download_files completed successfully for "
              f"{len(succeeded_paths)}/{len(urls)} items")
     # return the paths to the downloaded files
     return succeeded_paths
@@ -237,12 +228,12 @@ async def extract_and_translate(archive_paths,
     all_ap = archive_paths
     # cap out max tasks at number of files
     archive_paths = [p for p in archive_paths if p.exists()]
-    log.info(f"Extracting {len(archive_paths)}/{len(all_ap)} requested archives")
+    logger.info(f"Extracting {len(archive_paths)}/{len(all_ap)} requested archives")
     concurrent_extract_jobs = min(concurrent_extract_jobs, len(archive_paths))
     # set up queues to hold extract task args
     extract_queue = asyncio.Queue()
     succeeded = []
-    log.debug(f"create {concurrent_extract_jobs} concurrent extract tasks for "
+    logger.debug(f"create {concurrent_extract_jobs} concurrent extract tasks for "
               f"{len(archive_paths)} items")
     # initialise consumers which block at queue.get() until producer fills queue
     queue_consumers = [
@@ -262,7 +253,7 @@ async def extract_and_translate(archive_paths,
     # cancel all coroutines once queue is empty
     for consumer_future in queue_consumers:
         consumer_future.cancel()
-    log.info(f"Unzip and extract completed successfully for "
+    logger.info(f"Unzip and extract completed successfully for "
              f"{len(succeeded)/len(archive_paths)} items")
     # return the paths to tthe extracted rasters
     return succeeded
@@ -326,8 +317,8 @@ async def open_subprocess(cmd_text,
     #    cmd,
     #    stdout=asyncio.subprocess.PIPE,
     #    stderr=asyncio.subprocess.PIPE)
-    log.debug("open subprocess:")
-    log.debug(cmd_text)
+    logger.debug("open subprocess:")
+    logger.debug(cmd_text)
     output = subprocess.Popen(cmd_text,
                               shell=True,
                               stdout=subprocess.PIPE,
@@ -366,9 +357,9 @@ async def open_subprocess(cmd_text,
                             lines.append(f'stderr: {stderr.decode()}\n')
                         fp.writelines(lines)
             if stdout:
-                log.debug(f'[stdout]\n{stdout.decode()}')
+                logger.debug(f'[stdout]\n{stdout.decode()}')
             if stderr:
-                log.debug(f'[stderr]\n{stderr.decode()}')
+                logger.debug(f'[stderr]\n{stderr.decode()}')
             # done
             return stdout.decode()
             break
@@ -417,7 +408,7 @@ async def extract_zipfile(filepath,
     if return_raster_list_only:
         return rasters
     if all(r.exists() for r in rasters) and not overwrite:
-        log.warning(f"raster files {rasters} already present on disk, "
+        logger.warning(f"raster files {rasters} already present on disk, "
                     "skipping unzip...")
     else:
         ov = '-o' if overwrite else '-n'
@@ -427,9 +418,9 @@ async def extract_zipfile(filepath,
         assert all(r.exists() for r in rasters), (
             f"'{unzip_cmd}' succeeded but expected files {rasters} not found!"
         )
-        log.debug(f"Extracted files: {archive_files} from archive: {filepath}")
+        logger.debug(f"Extracted files: {archive_files} from archive: {filepath}")
     if delete_archive:
-        log.debug(f"Deleting zip archive: {filepath}")
+        logger.debug(f"Deleting zip archive: {filepath}")
         await open_subprocess(f'rm {filepath}')
         # delete non-raster files?
         # clean_paths = [p for p in paths if p != raster]
@@ -463,10 +454,10 @@ async def gdal_translate(input_raster_path,
         return output_raster_name
     out_file = Path(input_raster_path).parent / output_raster_name
     if out_file.exists() and not overwrite:
-        log.debug(f"gdal_translate output file {out_file} already exists, "
+        logger.debug(f"gdal_translate output file {out_file} already exists, "
                   " skipping...")
         return out_file
-    log.debug(f"translating {input_raster_name} -> {out_file.parts[-1]}")
+    logger.debug(f"translating {input_raster_name} -> {out_file.parts[-1]}")
     translate_cmd = ('gdal_translate -of GTiff -co COMPRESS=LZW -co TILED=YES '
                      f'-outsize {size_pct}% {size_pct}% -r bilinear '
                      f'{input_raster_path} {out_file}')

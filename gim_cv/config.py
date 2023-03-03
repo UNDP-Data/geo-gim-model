@@ -18,19 +18,19 @@ from pathlib import Path
 import logging
 
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # TODO: put this in an environment variable
-def get_config_path(configpath_lmo='/home/root/config.yml',
-                    configpath_lnn='/home/root/lnn/config.yml'):
+def get_config_path(configpath_lmo='./config.yml',
+                    configpath_lnn='./config.yml'):
     if os.path.exists(configpath_lmo):
         return configpath_lmo
     elif os.path.exists(configpath_lnn):
         return configpath_lnn
     else:
         msg = f"Files {configpath_lmo} or {configpath_lnn} not found!"
-        log.error(msg)
+        logger.error(msg)
         raise FileNotFoundError(msg)
 
 
@@ -58,14 +58,14 @@ def verify_path_exists(path, raise_exc=True):
         if raise_exc:
             raise FileNotFoundError(msg)
         # warn
-        log.warning(msg)
+        logger.warning(msg)
 
 # -----------------------------------------------------------------------------
 # register the tag handler
 yaml.SafeLoader.add_constructor(tag='!join', constructor=join)
 
 # check file exists
-log.debug("Loading configuration file...")
+logger.debug("Loading configuration file...")
 yml_path = Path(YML_PATH)
 verify_path_exists(yml_path)
 
@@ -74,7 +74,7 @@ with open(yml_path, 'r') as f:
     try:
         _cfg = yaml.safe_load(f)
     except Exception as e:
-        log.error(e)
+        logger.error(e)
         raise
 
 # extra step - try to catch missing filepaths early

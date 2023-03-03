@@ -1,13 +1,12 @@
 import logging
 
-import timbermafia as tm
 
 from tensorflow.keras.callbacks import Callback
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-class NBatchLogger(Callback, tm.Logged):
+class NBatchLogger(Callback):
     """
     A Logger that log average performance per `display` steps.
 

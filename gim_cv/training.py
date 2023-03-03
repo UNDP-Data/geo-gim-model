@@ -8,36 +8,24 @@ generators for training models.
 Main APIs are the TrainingDataset and CompositeTrainingDataset classes.
 """
 import yaml
-import random
-import pickle
-import shutil
-import warnings
 import logging
-import importlib
 import hashlib
 import itertools
 import gc
 import abc
 from functools import partial
 from pathlib import Path, PosixPath
-from time import perf_counter as pc
 from typing import Union, Any, Tuple
-
-import timbermafia as tm
 import pandas as pd
 import regex as re
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import dask
 import dask.array as da
-from osgeo import gdal, osr, ogr
-from cached_property import cached_property
 
-import gim_cv.config as cfg
+from tensorflow.python.tpu.client.client import Client
+
+
 import gim_cv.preprocessing as preprocessing
 from gim_cv.exceptions import InvalidArrayError
-from gim_cv.preprocessing import rescale_image_array, balanced_oversample, strong_aug
 from gim_cv.interfaces import get_interface
 from gim_cv.interfaces.base import ArrayCache
 from gim_cv.utils import (yield_chunks, window_slices,
@@ -256,7 +244,7 @@ def fancy_batch_generator(X:da.Array,
     # instantiate distributed scheduler if not passed
     if client is None:
         close_client_after = True
-        client = Client(processes=False) 
+        client = Client(processes=False)
     # track nsamples
     n_samples = X.shape[0]
     # seed numpy
@@ -369,7 +357,7 @@ def prune_all_black_or_white(X:da.Array, y:da.Array) -> Tuple[da.Array, da.Array
     return X[not_all_black & not_all_white], y[not_all_black & not_all_white]
 
 
-class BaseTrainingDataset(tm.Logged, metaclass=abc.ABCMeta):
+class BaseTrainingDataset(metaclass=abc.ABCMeta):
     """
     Implements common methods for (Composite)TrainingDataset classes.
     See these.
@@ -511,11 +499,11 @@ class BaseTrainingDataset(tm.Logged, metaclass=abc.ABCMeta):
             for training and validation only, accessing this will return None.
         """
         if len(self.split_partition_indices) > 3:
-            #start_blk = self.split_partition_block_indices[2]
-            #end_blk = self.split_partition_block_indices[3]
+            start_blk = self.split_partition_block_indices[2]
+            end_blk = self.split_partition_block_indices[3]
             start_ix = self.split_partition_indices[2]
             end_ix = self.split_partition_indices[3]
-            #blk_size = self.y.chunksize[0] # assumes axis=0 aligned chunking!
+            blk_size = self.y.chunksize[0] # assumes axis=0 aligned chunking!
             return self.y[start_blk*blk_size:end_blk*blk_size]
 
     def batch_gen_train(self):
@@ -563,7 +551,7 @@ class BaseTrainingDataset(tm.Logged, metaclass=abc.ABCMeta):
         return set(self.tag)
 
 
-class CompositeTrainingDataset(BaseTrainingDataset, tm.Logged):
+class CompositeTrainingDataset(BaseTrainingDataset):
     """
     Interface for preparing diverse raster/image data for training.
 
@@ -947,7 +935,7 @@ class CompositeTrainingDataset(BaseTrainingDataset, tm.Logged):
         return self.get_y()
 
 
-class TrainingDataset(BaseTrainingDataset, tm.Logged):
+class TrainingDataset(BaseTrainingDataset):
     """
     Interface for preparing raster/image data from a file for training.
 

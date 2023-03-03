@@ -54,35 +54,21 @@ module_level_variable1 : int
 
 """
 import abc
-import shutil
 import gc
-import warnings
 import os
-import time #LN
-
+import time
 import numpy as np
-import dask
-import dask.array as da
 import tensorflow.keras
-
 import gim_cv.config as cfg
-import gim_cv.preprocessing as preprocessing
-
 from pathlib import Path
 from time import perf_counter as pc
-
-from dask.distributed import Client, as_completed
 from gim_cv.preprocessing import Tiler, get_image_inference_pipeline
 from gim_cv.utils import require_attr_true
-from gim_cv.dask_tools import pair_chunk_generator
 from gim_cv.interfaces import get_interface
 from gim_cv.interfaces.base import rescale_metadata
-from gim_cv.interfaces.base import ArrayCache
-
-import timbermafia as tm
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def has_empty_raster(ids:'InferenceDataset') -> bool:
@@ -92,12 +78,12 @@ def has_empty_raster(ids:'InferenceDataset') -> bool:
     """
     ids.load_input_array()
     if ids.image_reader.array.min().compute() == 255:
-        log.info(f"Identified empty input raster: {ids.image_src}")
+        logger.info(f"Identified empty input raster: {ids.image_src}")
         return True
     return False        
 
 
-class BaseInferenceDataset(tm.Logged, metaclass=abc.ABCMeta):
+class BaseInferenceDataset(metaclass=abc.ABCMeta):
     """
     Implements common methods for single- and multi-raster 
     (Composite)InferenceDataset objects.
@@ -124,7 +110,7 @@ def tar_mask_path(image_src,
     return Path(directory) / Path(f"{image_filename}{rs_str}_{model_str}.{ext}")
 
 
-class CompositeInferenceDataset(BaseInferenceDataset, tm.Logged):
+class CompositeInferenceDataset(BaseInferenceDataset):
     """ Interface to multiple InferenceDatasets (e.g. with different source rasters).
         Provides methods to apply preprocessing and inference with a given model
         on a set of input rasters independently.
@@ -221,7 +207,7 @@ class CompositeInferenceDataset(BaseInferenceDataset, tm.Logged):
             c.cache_mask_array_tiles(overwrite=overwrite)
 
 
-class InferenceDataset(BaseInferenceDataset, tm.Logged):
+class InferenceDataset(BaseInferenceDataset):
     """
     Facilitates running segmentation inference with a model on an input raster.
 

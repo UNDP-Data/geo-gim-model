@@ -21,34 +21,15 @@
 """
 import os
 import re
-import random
-import pickle
-import shutil
-import warnings
-import importlib
-import hashlib
 import itertools
 import operator
-import gc
-import abc
-
 import sqlalchemy as db
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
 import gim_cv.config as cfg
-import gim_cv.preprocessing as preprocessing
-
-from operator import attrgetter
 from pathlib import Path, PosixPath
-from typing import Union, Any
 from functools import partial, reduce
-
-from cached_property import cached_property
-from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine.url import URL
-
 from gim_cv.preprocessing import (get_image_training_pipeline,
                                         get_binary_mask_training_pipeline,
                                         get_image_inference_pipeline,
@@ -59,7 +40,6 @@ from gim_cv.training import TrainingDataset, CompositeTrainingDataset
 from gim_cv.utils import RegisteredAttribute, free_from_white_pixels, require_attr_true
 
 import logging
-import timbermafia as tm
 
 log = logging.getLogger(__name__)
 
@@ -217,7 +197,7 @@ def sorted_files_matching(pattern, directory):
     )
 
 
-class Dataset(tm.Logged):
+class Dataset:
     """
     Class which groups together raster and/or shapefiles into a dataset
 

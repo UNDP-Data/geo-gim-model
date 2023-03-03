@@ -1,0 +1,33 @@
+version: "3.7"
+services:
+  gim_model:
+    restart: "no"
+    build:
+        context: .
+        dockerfile: Dockerfile
+    ports:
+        - "8080:8080"
+    volumes:
+      # bind . on host to /home/root in container (allows editing code)
+      #- .:/home/root
+      - type: bind
+        source: .
+        target: /home/root
+        #volume:
+        #  nocopy: true
+      # bind data drives
+      - type: bind
+        source: /home/LN/data/datasets
+        target: /home/root/data/volumes/datasets
+      #  read_only: true
+      - type: bind
+        source: /home/LN/data/ebs_trained_models
+        target: /home/root/saved_models/ebs_trained_models
+      - type: bind
+        source: /home/LN/data/results
+        target: /home/root/data/volumes/results
+      # processed arrays
+      - type: bind
+        source: /home/LN/data/processed
+        target: /home/root/data/processed
+

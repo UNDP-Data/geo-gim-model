@@ -7,12 +7,11 @@ except:
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-import timbermafia as tm
 
 from .utils import moving_window_avg
 
 
-class LrRangeTest(keras.callbacks.Callback, tm.Logged):
+class LrRangeTest(keras.callbacks.Callback):
     """
     A callback class for finding a learning rate.
 

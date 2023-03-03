@@ -1,13 +1,15 @@
+import logging
 import tensorflow.keras as keras
 import tensorflow.keras.backend as K
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-import timbermafia as tm
 from .utils import set_momentum, set_lr
 
 
-class OneCycle(keras.callbacks.Callback, tm.Logged):
+logger = logging.getLogger(__name__)
+
+class OneCycle(keras.callbacks.Callback):
     """
     A callback class for one-cycle policy training.
 
@@ -102,8 +104,8 @@ class OneCycle(keras.callbacks.Callback, tm.Logged):
 
         self.n_iter = self.n_epoch * self.n_bpe
         # this is a number of iteration in one cycle
-        log.debug(f"engage one cycle policy for {self.n_epoch} epochs")
-        log.debug(f"and {self.n_bpe} batches per epoch")
+        logger.debug(f"engage one cycle policy for {self.n_epoch} epochs")
+        logger.debug(f"and {self.n_bpe} batches per epoch")
         self.current_iter = 0
 
     def on_train_batch_begin(self, batch, logs={}):
@@ -114,7 +116,7 @@ class OneCycle(keras.callbacks.Callback, tm.Logged):
     def on_train_batch_end(self, batch, logs={}):
 
         if self.verbose:
-            log.debug("lr={:.2e}".format(self.get_current_lr()), ",", "m={:.2e}".format(self.get_current_momentum()))
+            logger.debug("lr={:.2e}".format(self.get_current_lr()), ",", "m={:.2e}".format(self.get_current_momentum()))
 
         # record according to record_frq
         if np.mod(int(self.current_iter), self.record_frq) == 0:

@@ -1,31 +1,19 @@
 import gc
-import warnings
-
 import rasterio
 import numpy as np
 import dask.array as da
-import timbermafia as tm
-
 import gim_cv.config as cfg
-
-from threading import Lock
-
-from cached_property import cached_property
 from dask.base import tokenize
 from dask import is_dask_collection
 from rasterio.transform import Affine, guard_transform
 from rasterio.windows import Window
-#from xarray import DataArray
-
-from gim_cv.utils import require_attr_true
 from gim_cv.interfaces.base import BaseRasterInterface
-
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-class RasterInterface(BaseRasterInterface, tm.Logged):
+class RasterInterface(BaseRasterInterface):
     use_cache = False
     """ Implements parallel read of tif with RasterIO """
 
@@ -42,30 +30,31 @@ class RasterInterface(BaseRasterInterface, tm.Logged):
     def read_array_from_raster(self, *args, **kwargs):
         """ add rechunk as blocks are typically quite small (O(1MB))
         """
-        log.debug(f"Reading raster from file {self.raster_path}...")
-        self.array = read_raster(self.raster_path).transpose(1, 2, 0) # swap to channels last
-        log.debug(f"Done reading raster from file {self.raster_path}")
+        logger.debug(f"Reading raster from file {self.raster_path}...")
+        self.array = read_raster(self.raster_path).transpose(1, 2, 0)  # swap to channels last
+        logger.debug(f"Done reading raster from file {self.raster_path}")
         return self.array
 
     def write_raster(self, overwrite=False, *args, **kwargs):
         assert self.data_available, ("Can't write raster - array and metadata not set!")
-        log.debug(f"Writing raster to file {self.raster_path}...")
+        logger.debug(f"Writing raster to file {self.raster_path}...")
         if self.raster_path.exists():
             if not overwrite:
-                log.debug(f"File {self.raster_path} already exists! Skipping...")
+                logger.debug(f"File {self.raster_path} already exists! Skipping...")
                 return
         else:
             self.raster_path.parent.mkdir(parents=True, exist_ok=True)
         profile = self.metadata.copy()
         profile.update(dtype=self.array.dtype,
-                       count=self.array.shape[2], # bands
+                       count=self.array.shape[2],  # bands
                        compress='lzw')
         write_raster(
             self.raster_path,
-            self.array.transpose(2, 0, 1), # swap to channels first
+            self.array.transpose(2, 0, 1),  # swap to channels first
             **profile
         )
-        log.debug(f"Done writing raster at {self.raster_path}!")
+        logger.debug(f"Done writing raster at {self.raster_path}!")
+
 
 ## workhorse functions
 ## mostly adapted from dask-rasterio
@@ -84,7 +73,8 @@ def read_raster_band(path,
                                     (along each axis, so mult^2 natural chunks)
                                     if this is None, just read natural blocks
     """
-    log.debug(f"read raster band {band}")
+    logger.debug(f"read raster band {band}")
+
     def read_window(raster_path, window, band):
         with rasterio.open(raster_path) as src:
             return src.read(band, window=window)
@@ -105,49 +95,49 @@ def read_raster_band(path,
         shape = src.shape
         nat_blk_h, nat_blk_w = src.block_shapes[band - 1]
         width, height = src.meta['width'], src.meta['height']
-        log.debug(f"dask reading raster with width, height: {width}, {height}")
-        log.debug(f"natural block shape is width, height: {nat_blk_w}, {nat_blk_h}")
+        logger.debug(f"dask reading raster with width, height: {width}, {height}")
+        logger.debug(f"natural block shape is width, height: {nat_blk_w}, {nat_blk_h}")
         # if no chunk size specified, read natural bllocks, optionally * some multiplier
         # (same in both dimensions)
         if target_chunk_size is None:
             mult = 1 if natural_chunk_multiplier is None else natural_chunk_multiplier
-            n_cols_chunk, n_rows_chunk = mult*nat_blk_w, mult*nat_blk_h
+            n_cols_chunk, n_rows_chunk = mult * nat_blk_w, mult * nat_blk_h
         # otherwise, adaptively assemble natural blocks to approximately
         # form dask chunks of w, h : w*h ~= target_chunk_size^2
         else:
             # if the largest dimension of the image is less than the
             # target chunk size, just read the whole band as one block
             if max(width, height) <= target_chunk_size:
-                target_chunk_size = max(width, height) # generalise this to x != y
+                target_chunk_size = max(width, height)  # generalise this to x != y
             # try to get as many natural blocks
             # natural block size is h*w
             total_size = target_chunk_size * target_chunk_size
-            log.debug(f"total size is: {total_size}")
+            logger.debug(f"total size is: {total_size}")
             if nat_blk_w > nat_blk_h:
                 n_cols_chunk = nat_blk_w
                 # take however many vertical blocks so that
                 # the block size is closest to total size
                 n_rows_chunk = min(int(total_size / nat_blk_w), height)
-                log.debug(f"n_rows_chunk calculated as min({total_size}/{nat_blk_w}, {height}): {n_rows_chunk}")
+                logger.debug(f"n_rows_chunk calculated as min({total_size}/{nat_blk_w}, {height}): {n_rows_chunk}")
             else:
                 # ditto for horizontal blocks
                 n_cols_chunk = min(int(total_size / nat_blk_h), width)
-                log.debug(f"n_cols_chunk calculated as min({total_size}/{nat_blk_h}, {width}): {n_cols_chunk}")
+                logger.debug(f"n_cols_chunk calculated as min({total_size}/{nat_blk_h}, {width}): {n_cols_chunk}")
                 n_rows_chunk = nat_blk_h
         chunk_shape = (n_rows_chunk, n_cols_chunk)
-        log.debug(f"reading raster with chunk shape: {chunk_shape}")
+        logger.debug(f"reading raster with chunk shape: {chunk_shape}")
         vchunks = range(0, shape[0], chunk_shape[0])
         hchunks = range(0, shape[1], chunk_shape[1])
         name = 'raster-{}'.format(tokenize(path, band, chunk_shape))
-        #blocks = block_windows(src, band, block_size)
+        # blocks = block_windows(src, band, block_size)
         chunk_shape = da.core.normalize_chunks(chunk_shape, shape=src.shape)
     # build the dask task graph manually
     dsk = {}
     for i, vcs in enumerate(vchunks):
         for j, hcs in enumerate(hchunks):
             window = Window(hcs, vcs,
-                            min(n_cols_chunk,  shape[1] - hcs),
-                            min(n_rows_chunk,  shape[0] - vcs))
+                            min(n_cols_chunk, shape[1] - hcs),
+                            min(n_rows_chunk, shape[0] - vcs))
             dsk[(name, i, j)] = (read_window, path, window, band)
     # assemble tasks into array
     _darr = da.Array(dsk, name, chunk_shape, dtype, shape=shape)
@@ -194,8 +184,7 @@ def read_raster(path,
         ])
 
 
-
-class RasterioDataset(tm.Logged):
+class RasterioDataset:
     """Rasterio wrapper to allow dask.array.store to do window saving.
     Example:
         >> rows = cols = 21696
@@ -301,9 +290,9 @@ def pad(array, transform, pad_width, mode=None, **kwargs):
         pad_width_top_y = pw_arr[0]
     # other scenario: 3 dimensions specify padding separately for rows, cols, channels
     elif pw_arr.shape[0] == 3:
-            # x -> cols, y -> rows
-            pad_width_left_x = pw_arr[1, 0]
-            pad_width_top_y =  pw_arr[0, 0]
+        # x -> cols, y -> rows
+        pad_width_left_x = pw_arr[1, 0]
+        pad_width_top_y = pw_arr[0, 0]
     else:
         raise ValueError(f"padding width specification shape {pw_arr.shape} not understood")
     padded_trans[2] -= pad_width_left_x * padded_trans[0]
@@ -311,6 +300,7 @@ def pad(array, transform, pad_width, mode=None, **kwargs):
     padded_trans = Affine(*padded_trans[:6])
     print("padded", padded_trans)
     return padded_array, padded_trans
+
 
 def pad_raster_to_window(array, transform, min_rows, min_cols, constant_values=1):
     """Pad an array and its corresponding transform to match at least
@@ -321,9 +311,9 @@ def pad_raster_to_window(array, transform, min_rows, min_cols, constant_values=1
     return pad(
         array, transform,
         pad_width=(
-           (0, padding_rows), # start, end (both axes)
-           (0, padding_cols),
-           (0, 0)
+            (0, padding_rows),  # start, end (both axes)
+            (0, padding_cols),
+            (0, 0)
         ),
         mode='constant',
         constant_values=constant_values

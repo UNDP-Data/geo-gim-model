@@ -9,11 +9,8 @@
     https://arxiv.org/abs/1810.07842
 
 """
-import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
-
-import timbermafia as tm
 from functools import partial
 
 from scipy.ndimage import distance_transform_edt as distance
@@ -21,13 +18,11 @@ from tensorflow.keras.losses import binary_crossentropy
 
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 epsilon = tf.keras.backend.epsilon()
 smooth = 1
-# ----- loss components
-
-# ----- these components from https://github.com/nabsabraham/focal-tversky-unet/blob/master/losses.py
+# ----- 
 
 def recall(y_true, y_pred):
     smooth=1
@@ -116,7 +111,7 @@ def calc_dist_map_batch(y_true):
     return np.array([calc_dist_map(y)
                      for y in y_true_numpy]).astype(np.float32)
 
-class AlphaScheduler(tf.keras.callbacks.Callback, tm.Logged):
+class AlphaScheduler(tf.keras.callbacks.Callback):
     """ Element of surface loss defined in:
         http://proceedings.mlr.press/v102/kervadec19a/kervadec19a.pdf
         https://github.com/LIVIAETS/surface-loss/issues/14#issuecomment-546342163

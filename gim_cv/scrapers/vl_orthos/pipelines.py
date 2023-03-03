@@ -5,14 +5,13 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 import sqlite3
-import timbermafia as tm
 import gim_cv.config as cfg
 
 import logging
 
 log = logging.getLogger(__name__)
 
-class SQLitePipeline(tm.Logged):
+class SQLitePipeline:
     #@classmethod
     #def from_crawler(cls, crawler):
     #    logging.warning(crawler.settings.get("MONGO_URI"))

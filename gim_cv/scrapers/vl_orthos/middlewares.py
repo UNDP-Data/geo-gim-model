@@ -6,12 +6,11 @@
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
-import timbermafia as tm
 import logging
 
 log = logging.getLogger(__name__)
 
-class VlOrthosSpiderMiddleware(tm.Logged):
+class VlOrthosSpiderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the spider middleware does not modify the
     # passed objects.
@@ -59,7 +58,7 @@ class VlOrthosSpiderMiddleware(tm.Logged):
         spider.logger.info('Spider opened: %s' % spider.name)
 
 
-class VlOrthosDownloaderMiddleware(tm.Logged):
+class VlOrthosDownloaderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the downloader middleware does not modify the
     # passed objects.

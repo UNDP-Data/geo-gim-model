@@ -10,9 +10,8 @@ except:
     import keras.backend as K
 import importlib
 import gc
-import timbermafia as tm
 
-class History(tm.Logged):
+class History:
     """
     Custom class to help get log data from keras.callbacks.History objects.
 

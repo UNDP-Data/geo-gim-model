@@ -1,8 +1,6 @@
 import importlib
-import timbermafia as tm
 import gim_cv.config as cfg
 
-from pathlib import Path
 
 import logging
 
@@ -22,7 +20,7 @@ RasterInterface = getattr(
 
 # set defaults for rasterinterface subclasses - just clones with different cache directories
 # and cache on/off switches depending on image/mask and read/write
-class ImageReader(RasterInterface, tm.Logged):
+class ImageReader(RasterInterface):
     def __init__(self, *args, **kwargs):
         if 'cache_dir' not in kwargs:
             kwargs['cache_dir'] = cfg.input_image_array_dir
@@ -32,7 +30,7 @@ class ImageReader(RasterInterface, tm.Logged):
 
 
 # tif also used for masks - change default save dir, and these have their own metadata so dont req it explicitly
-class BinaryMaskReader(RasterInterface, tm.Logged):
+class BinaryMaskReader(RasterInterface):
     def __init__(self, *args, **kwargs):
         if 'cache_dir' not in kwargs:
             kwargs['cache_dir'] = cfg.input_binary_mask_array_dir
@@ -41,7 +39,7 @@ class BinaryMaskReader(RasterInterface, tm.Logged):
         super().__init__(*args, **kwargs)
 
 
-class LabelledMaskReader(RasterInterface, tm.Logged):
+class LabelledMaskReader(RasterInterface):
     def __init__(self, *args, **kwargs):
         if 'cache_dir' not in kwargs:
             kwargs['cache_dir'] = cfg.input_labelled_mask_array_dir
@@ -51,7 +49,7 @@ class LabelledMaskReader(RasterInterface, tm.Logged):
 
 # -- writers
 
-class ImageWriter(RasterInterface, tm.Logged):
+class ImageWriter(RasterInterface):
     def __init__(self, *args, **kwargs):
         if 'cache_dir' not in kwargs:
             kwargs['cache_dir'] = cfg.output_image_array_dir
@@ -60,7 +58,7 @@ class ImageWriter(RasterInterface, tm.Logged):
         super().__init__(*args, **kwargs)
 
 
-class BinaryMaskWriter(ImageWriter, tm.Logged):
+class BinaryMaskWriter(ImageWriter):
     def __init__(self, *args, **kwargs):
         if 'cache_dir' not in kwargs:
             kwargs['cache_dir'] = cfg.output_binary_mask_array_dir
@@ -69,7 +67,7 @@ class BinaryMaskWriter(ImageWriter, tm.Logged):
 
 
 
-class LabelledMaskWriter(ImageWriter, tm.Logged):
+class LabelledMaskWriter(ImageWriter):
     def __init__(self, *args, **kwargs):
         if 'cache_dir' in kwargs:
             kwargs['cache_dir'] = cfg.output_labelled_mask_array_dir

@@ -1,15 +1,12 @@
 import dask.array as da
 import dask
-
 import numpy as np
 import dask.array as da
-import timbermafia as tm
 
 
 import logging
 
-log = logging.getLogger(__name__)
-
+logger = logging.getLogger(__name__)
 
 
 def ds_to_dask_array(
@@ -51,8 +48,8 @@ def ds_to_dask_array(
     sample_image_arr = image_ds.GetVirtualMemArray()
     # try to derive an optimal chunk size which is a multiple of patch size
     image_size_mb = sample_image_arr.nbytes/(1024*1024)
-    log.debug(f"Processing array of size: {image_size_mb:.2f} MB")
-    log.debug(f"With dimensions: {sample_image_arr.shape}")
+    logger.debug(f"Processing array of size: {image_size_mb:.2f} MB")
+    logger.debug(f"With dimensions: {sample_image_arr.shape}")
     n_blocks_ideal = round(image_size_mb/target_block_size_mb)
     window_size_x, window_size_y = window_size
     n_patch_x, n_patch_y = (image_ds.RasterXSize/window_size_x,
@@ -63,16 +60,16 @@ def ds_to_dask_array(
     k_opt = round(np.sqrt(n_patch_x * n_patch_y / n_blocks_ideal))
     new_window_size_x, new_window_size_y = (int(k_opt * window_size_x),
                                           int(k_opt * window_size_y))
-    log.debug("Partitioning image into dask array with chunks of size: "
+    logger.debug("Partitioning image into dask array with chunks of size: "
           f"({new_window_size_x}, {new_window_size_y})")
     # this takes some time
     t0 = pc()
     if image_size_mb > virtual_mem_threshold_mb:
-        log.debug("Loading array from virtual memory into dask array: "
+        logger.debug("Loading array from virtual memory into dask array: "
               "This can take several minutes! (1.8GB => ~18m)")
         _arr = sample_image_arr.transpose(1, 2, 0)
     else:
-        log.debug("Loading image into in-memory numpy array and converting to dask."
+        logger.debug("Loading image into in-memory numpy array and converting to dask."
               " This can take a few minutes (1.8GB => ~6m).")
         _arr = image_ds.ReadAsArray().transpose(1, 2, 0)
     # workaround to avoid blowing up RAM:
@@ -86,5 +83,5 @@ def ds_to_dask_array(
         (new_window_size_y, new_window_size_x, 3)
     )
     #dask_arr = da.from_array(_arr, chunks=...)
-    log.debug(f"Dask array created. Took {pc()-t0:.2f}s")
+    logger.debug(f"Dask array created. Took {pc()-t0:.2f}s")
     return dask_arr

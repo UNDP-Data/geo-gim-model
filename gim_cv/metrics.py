@@ -17,9 +17,7 @@
 #npv(np.array((1, 0, 0)), np.array((0, 0, 0)))# - 0.6666 < eps
 
 import numpy as np
-import sys
 
-#epsilon = sys.float_info.epsilon
 epsilon = 1e-9
 
 def recall(y_true, y_pred, eps=epsilon):

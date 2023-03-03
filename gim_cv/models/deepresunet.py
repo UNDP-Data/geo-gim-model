@@ -16,15 +16,11 @@ import tensorflow as tf
 keras = tf.keras
 layers = tf.keras.layers
 
-import timbermafia as tm
 from kerastuner import HyperModel
-
 import gim_cv.losses as losses
-import gim_cv.tools.keras_one_cycle_clr as clr
-
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def _derive_filters_list(output_filters:int, ratios:tuple=(1,2,2), ref_filter_index=-1):
@@ -39,7 +35,7 @@ def _derive_filters_list(output_filters:int, ratios:tuple=(1,2,2), ref_filter_in
     return [int(output_filters * r) for r in resc_ratios]
 
 
-class BNActivation(tf.keras.Model, tm.Logged):#tf.keras.layers.Layer):
+class BNActivation(tf.keras.Model):#tf.keras.layers.Layer):
     """ Layer combining batch normalisation and activation
     """
     def __init__(self, name, act='relu', *args, **kwargs):
@@ -66,7 +62,7 @@ class BNActivation(tf.keras.Model, tm.Logged):#tf.keras.layers.Layer):
         return x
 
 
-class ConvBlock(tf.keras.Model, tm.Logged):#tf.keras.layers.Layer):
+class ConvBlock(tf.keras.Model):#tf.keras.layers.Layer):
     """ Layer combining 3x3 2D convolution followed by batch norm and activation
     """
     def __init__(self,
@@ -106,7 +102,7 @@ class ConvBlock(tf.keras.Model, tm.Logged):#tf.keras.layers.Layer):
         return self.batch_norm_act(conv, training=training)
 
 
-class ResidualBlock(tf.keras.Model, tm.Logged):#tf.keras.layers.Layer):
+class ResidualBlock(tf.keras.Model):#tf.keras.layers.Layer):
     """ Residual block consisting of a pair of successive 3x3
         convolutions, followed by batch normalisation and activation and a 1x1
         convolution to reshape to the input size to get the residual value,
@@ -225,7 +221,7 @@ class ResidualBlock(tf.keras.Model, tm.Logged):#tf.keras.layers.Layer):
         #self.built=True
         
 
-class UpsampleConcatBlock(tf.keras.Model, tm.Logged):#tf.keras.layers.Layer):
+class UpsampleConcatBlock(tf.keras.Model):#tf.keras.layers.Layer):
     """ 
     Upsample input x and concatenate it with input from previous layers,
     then apply 1x1 convolution kernels to fix channel dimension to filters
@@ -279,7 +275,7 @@ class UpsampleConcatBlock(tf.keras.Model, tm.Logged):#tf.keras.layers.Layer):
         return self.conv_2d_1x1(c)
 
 
-class DownsampleBlock(tf.keras.Model, tm.Logged):
+class DownsampleBlock(tf.keras.Model):
     def __init__(self,
                  name:str,
                  output_filters:int,
@@ -330,7 +326,7 @@ class DownsampleBlock(tf.keras.Model, tm.Logged):
         return res#self.relu(summed)
 
 
-class UpsampleBlock(tf.keras.Model, tm.Logged):
+class UpsampleBlock(tf.keras.Model):
     def __init__(self,
                  name:str,
                  upsample_output_filters:int,
@@ -391,7 +387,7 @@ class UpsampleBlock(tf.keras.Model, tm.Logged):
 
 ## main model
 
-class DeepResUNet(tf.keras.Model, tm.Logged):
+class DeepResUNet(tf.keras.Model):
     """
     tf.keras Model implementation of Deep Residual U-Net
     """
@@ -566,7 +562,7 @@ class DeepResUNet(tf.keras.Model, tm.Logged):
             raise ValueError("No checkpoint found in directory!")
     
 
-class HyperDeepResUNet(HyperModel, tm.Logged):
+class HyperDeepResUNet(HyperModel):
     """ 
     kerastuner.Hypermodel for DeepResUNet
     

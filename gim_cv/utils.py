@@ -3,49 +3,36 @@
     Miscellaneous utility functions used elsewhere
 """
 import hashlib
-import threading
-import multiprocessing
 import logging
-
 import numpy as np
 import matplotlib.pyplot as plt
 import dask
-import os
-import sys
 import tensorflow as tf
 import dask.array as da
-import timbermafia as tm
-
-import gim_cv.config as cfg
-
 from functools import wraps
-from pathlib import Path
-from time import perf_counter as pc
+
 from typing import Union, Any
 
-from osgeo import gdal, osr, ogr
 from scipy.sparse import coo_matrix
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
+logger = logging.getLogger(__name__)
 
-log = logging.getLogger(__name__)
 
-
-class RegisteredAttribute(tm.Logged):
+class RegisteredAttribute:
     """ descriptor """
     def __init__(self, name, registry):
         self.name = name
         self.registry = registry
     def __set__(self, instance, value):
-        #log.debug(f"RegisteredAttribute {instance} {value}")
+        #logger.debug(f"RegisteredAttribute {instance} {value}")
         # if the instance is already tracked, dont modify registry
         #if instance in self.registry.values():
-        #    log.debug(f"skip {instance}")
+        #    logger.debug(f"skip {instance}")
         #    return
         # otherwise if the attribute value is already tracking an instance, raise error
         #elif value in self.registry.keys():
-        #    #log.debug(self.registry, value)
+        #    #logger.debug(self.registry, value)
         #    raise AttributeError(f"{value} already registered")
         # otherwise update the registry
         #else:
@@ -265,7 +252,7 @@ def ensure_chunks_aligned(arrs:list, axis:int=0, verbose=True) -> list:
     # identify dask arrays in input sequence
     darrs = [a for a in arrs if isinstance(a, da.Array)]
     if not darrs:
-        log.warning("No dask arrays found in input!")
+        logger.warning("No dask arrays found in input!")
         return arrs
     # check chunks of any dask arrays are split along the target axis
     # (interpreted as training examples), and that they are the same size
@@ -281,11 +268,11 @@ def ensure_chunks_aligned(arrs:list, axis:int=0, verbose=True) -> list:
         ][0]
         target_chunksize = darr_chunky.chunksize
         if verbose:
-            log.debug(darr_chunky)
-            log.debug(f"Aligning array has numblocks {darr_chunky.numblocks}")
-            log.debug(f"Identified target chunksize {target_chunksize}...")
+            logger.debug(darr_chunky)
+            logger.debug(f"Aligning array has numblocks {darr_chunky.numblocks}")
+            logger.debug(f"Identified target chunksize {target_chunksize}...")
     except IndexError as ie:
-        log.error("No dask array found in input sequence with chunks aligned "
+        logger.error("No dask array found in input sequence with chunks aligned "
                   "along first dimension. Rechunk manually or improve this "
                   "function to do so automatically.")
         raise
@@ -303,8 +290,8 @@ def ensure_chunks_aligned(arrs:list, axis:int=0, verbose=True) -> list:
             "consistency check failed!"
         )
     except AssertionError as a:
-        log.debug(f"dsk_inds: {dsk_inds}")
-        log.debug(f"chunks: {[arrs[i].chunks for i in dsk_inds]}")
+        logger.debug(f"dsk_inds: {dsk_inds}")
+        logger.debug(f"chunks: {[arrs[i].chunks for i in dsk_inds]}")
         raise
 
     return arrs
@@ -744,7 +731,7 @@ def plot_pair(imgs, masks, ix=None, overlay=False, figsize=(16,8)):
     """
     if ix is None:
         ix = np.random.randint(imgs.shape[0])
-        log.info("Showing images at index:", ix)
+        logger.info("Showing images at index:", ix)
     return plot_img_and_mask(imgs[ix], masks[ix], overlay=True, figsize=(16,8))
 
 
@@ -813,7 +800,7 @@ def plot_sample_segmentation(images:Union[da.Array, np.array],
     # if no index supplied, get a random one
     if ix is None:
         ix = np.random.randint(images.shape[0])
-        log.info(f"Showing segmentation mask for image at index {ix}...")
+        logger.info(f"Showing segmentation mask for image at index {ix}...")
     # get the image and true mask
     img = images[ix]
     if isinstance(images, da.Array):
@@ -927,7 +914,7 @@ def yield_chunks(arrs, axis:int=0, loop=False, verbose=False):
     # we iterate over the block number and indices (shared across all darrs)
     while True:
         for i, blk_ind in enumerate(np.ndindex(darr.numblocks)):
-            #log.debug(i, blk_ind)
+            #logger.debug(i, blk_ind)
             blk_inds = inds[i]
             to_yield = []
             yield tuple(

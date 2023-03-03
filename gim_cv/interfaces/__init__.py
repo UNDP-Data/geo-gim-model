@@ -4,7 +4,7 @@ from pathlib import Path
 
 import logging
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 ALIASES = {'tiff' : 'tif'}
 

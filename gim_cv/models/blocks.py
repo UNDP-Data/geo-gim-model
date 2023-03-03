@@ -1,9 +1,7 @@
 from typing import Union, Optional, List, Tuple
 
-import timbermafia as tm
 import tensorflow as tf
 from tensorflow import einsum
-from tensorflow.keras.layers import Layer, Conv2D, BatchNormalization, Softmax, Conv3D
 from einops import rearrange
 keras = tf.keras
 layers = tf.keras.layers
@@ -17,7 +15,7 @@ if DEBUG_COMPONENTS:
 else:
     layer_cls = layers.Layer
 
-class BNActivation(layer_cls, tm.Logged):
+class BNActivation(layer_cls):
     """Layer combining batch normalisation and activation
     
     Parameters
@@ -50,7 +48,7 @@ class BNActivation(layer_cls, tm.Logged):
         return x
 
 
-class ConvBlock(layer_cls, tm.Logged):
+class ConvBlock(layer_cls):
     """ Layer combining 3x3 2D convolution followed by batch norm and activation
     
     Parameters
@@ -353,7 +351,7 @@ class LambdaConv(layer_cls):
         return self.layer(x)
 
     
-class LambdaConvBlock(layer_cls, tm.Logged):
+class LambdaConvBlock(layer_cls):
     """ Layer combining 3x3 2D convolution followed by batch norm and activation
     
     Parameters
@@ -555,7 +553,7 @@ class ResidualBlock(layer_cls):
         return x
 
     
-class DRUNetResidualBlock(layer_cls, tm.Logged):#tf.keras.layers.Layer):
+class DRUNetResidualBlock(layer_cls):#tf.keras.layers.Layer):
     """ Variation of residual block used in the DeepResUNet
     
         Residual block consisting of a pair of successive 3x3
@@ -707,7 +705,7 @@ class DRUNetResidualBlock(layer_cls, tm.Logged):#tf.keras.layers.Layer):
         return self.relu(add)
     
     
-class UpsampleConcatBlock(layer_cls, tm.Logged):#tf.keras.layers.Layer):
+class UpsampleConcatBlock(layer_cls):#tf.keras.layers.Layer):
     """ 
     Upsamples input x and concatenates it with input from previous layers,
     [NOT] then apply 1x1 convolution kernels to fix channel dimension to filters
@@ -767,7 +765,7 @@ class UpsampleConcatBlock(layer_cls, tm.Logged):#tf.keras.layers.Layer):
         return c#self.conv_2d_1x1(c)
     
     
-class EncoderBlock(layer_cls, tm.Logged):
+class EncoderBlock(layer_cls):
     """
     A block representing a layer of the convnet where convolutions generate
     feature maps of fixed size with a fixed number of convolutional filters.
@@ -848,7 +846,7 @@ class EncoderBlock(layer_cls, tm.Logged):
         return x
                 
                 
-class DecoderBlock(layer_cls, tm.Logged):
+class DecoderBlock(layer_cls):
     def __init__(
         self,
         filters:int,
@@ -972,7 +970,7 @@ def expand_as(tensor, rep, ax, name):
     return repeated_tensor        
 
 
-class GridAttentionBlock(layer_cls, tm.Logged):
+class GridAttentionBlock(layer_cls):
     """
     tf.keras Model implementation of an additive Attention Gating Block.
     

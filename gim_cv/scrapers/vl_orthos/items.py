@@ -5,14 +5,9 @@
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/items.html
 import logging
-import os
 import re
-import timbermafia as tm
 import scrapy
-
-
 from itemloaders.processors import TakeFirst, MapCompose
-#from scrapy.loader.processors import TakeFirst, MapCompose
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +40,7 @@ def extract_suffix(value):
 
 
 
-class VLOrthoItem(scrapy.Item, tm.Logged):
+class VLOrthoItem(scrapy.Item):
     # define the fields for your item here like:
     dataset = scrapy.Field(output_processor=TakeFirst())
     filesize = scrapy.Field(input_processor=extract_size,#MapCompose(extract_size),
