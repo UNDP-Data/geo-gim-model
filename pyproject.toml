@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gim_cv"
-version = "0.0.2"
+version = "0.0.3"
 description = "GIM Model"
 readme = "README.md"
 requires-python = ">=3.8"
