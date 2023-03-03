@@ -25,13 +25,13 @@ COPY pyproject.toml /home/root/package/pyproject.toml
 
 WORKDIR /home/root/package
 
-RUN pwd
+RUN echo "$PWD"
 
 RUN python3 -m pip install build
 
 RUN python3 -m build
-
-RUN ls -alh
+RUN python3 -m pip install  $(ls -alh dist/*.whl | awk '{print $9}')
+#RUN echo "$(ls -alh dist)"
 
 COPY mainfile.py /home/root/mainfile.py
 
