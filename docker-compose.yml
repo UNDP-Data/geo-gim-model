@@ -17,17 +17,17 @@ services:
         #  nocopy: true
       # bind data drives
       - type: bind
-        source: /home/LN/data/datasets
-        target: /home/root/data/volumes/datasets
+        source: ./data
+        target: /home/root/data
       #  read_only: true
       - type: bind
-        source: /home/LN/data/ebs_trained_models
+        source: ./saved_models/ebs_trained_models
         target: /home/root/saved_models/ebs_trained_models
       - type: bind
-        source: /home/LN/data/results
-        target: /home/root/data/volumes/results
+        source: ./results
+        target: /home/root/results
       # processed arrays
       - type: bind
-        source: /home/LN/data/processed
-        target: /home/root/data/processed
+        source: ./processed
+        target: /home/root/processed
 
