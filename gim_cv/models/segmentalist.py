@@ -179,10 +179,9 @@ class Segmentalist(keras.Model):
                 reversed([self.initial_filters] + self.residual_filters[:-1]), reversed(self.layer_blocks)
             ))
         ]
-        # --- optional components
-        # --- multi-scale "pyramid" pooling
-        # downsample the input at multiple spatial resolutions and provide these as additional inputs to deeper encoder blocks
-        # usual implementations don't feed the downsampled inputs at the lowest resolution to the deepest "bridge" block
+        # --- optional components --- multi-scale "pyramid" pooling downsample the input at multiple spatial
+        # resolutions and provide these as additional inputs to deeper encoder blocks usual implementations don't
+        # feed the downsampled inputs at the lowest resolution to the deepest "bridge" block
         if self.pyramid_pooling:
             # average pooling downsamples the image at each layer of the encoder after the first
             self.avg_pool_layers = [
@@ -343,48 +342,48 @@ class Segmentalist(keras.Model):
         val : Boolean flag to select whether to load the weights associated 
             with the lowest validation or training loss checkpoints
         """
-        if row.sag:
-            decoder_ag = 'SAG'
-        elif row.csag:
-            decoder_ag = 'CSAG'
-        else:
-            decoder_ag = None
+        # if row.sag:
+        #     decoder_ag = 'SAG'
+        # elif row.csag:
+        #     decoder_ag = 'CSAG'
+        # else:
+        #     decoder_ag = None
         model = Segmentalist(
             n_classes=1,
-            layer_blocks=row.layer_blocks_,
+            layer_blocks=row.layer_blocks,
             last_decoder_layer_blocks=row.last_decoder_layer_blocks,
             initial_filters=row.initial_filters,
-            residual_filters=row.residual_filters_,
-            initial_kernel_size=row.initial_kernel_size_,
-            head_kernel_size=row.head_kernel_size_,
+            residual_filters=row.residual_filters,
             cardinality=row.cardinality,
-            #channel_expansion_factor:int=2,
             act='relu',
             downsample='pool',
-            decoder_attention_gates=decoder_ag,
+            decoder_attention_gates=None,
             encoder_cbam=row.encoder_cbam,
             decoder_cbam=row.decoder_cbam,
             pyramid_pooling=row.pyramid_pooling,
             deep_supervision=row.deep_supervision,
-            lambda_conv=row.lambda_conv,
             multi_level_skip=False
         )
         model.checkpoint_uuid = row.uuid4
         # use same setup as training script to ensure parity in loaded model
         # interpret optimizer
-        if row.optimiser == 'sgd':
-            opt = tf.keras.optimizers.SGD(
-                learning_rate=row.lr_init, momentum=0.85, nesterov=False
-            )
-        elif row.optimiser == 'adam':
-            opt = tf.keras.optimizers.Adam(
-                learning_rate=row.lr_init, beta_1=0.9, beta_2=0.999, amsgrad=False
-            ) # check out RADAM?
-        elif row.optimiser == 'ranger':
-            radam = tf.optimizers.RectifiedAdam(lr=row.lr_init, min_lr=row.lr_min)
-            opt = tf.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
-        else:
-            raise ValueError(f"Optimiser {opt} not understood")
+        # if row.optimiser == 'sgd':
+        #     opt = tf.keras.optimizers.SGD(
+        #         learning_rate=row.lr_init, momentum=0.85, nesterov=False
+        #     )
+        # elif row.optimiser == 'adam':
+        #     opt = tf.keras.optimizers.Adam(
+        #         learning_rate=row.lr_init, beta_1=0.9, beta_2=0.999, amsgrad=False
+        #     ) # check out RADAM?
+        # elif row.optimiser == 'ranger':
+        #     radam = tf.optimizers.RectifiedAdam(lr=row.lr_init, min_lr=row.lr_min)
+        #     opt = tf.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
+        # else:
+        #     raise ValueError(f"Optimiser {opt} not understood")
+
+        # opt = tf.keras.optimizers.Adam(
+        #     learning_rate=row.lr_init, beta_1=0.9, beta_2=0.999, amsgrad=False
+        # )
         # select metrics
         metrics = [
             losses.tversky_index,

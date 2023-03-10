@@ -158,17 +158,17 @@ class CompositeInferenceDataset(BaseInferenceDataset):
         constituents list if this function returns True.
         """
         if self.prune_fn is not None:
-            self.log.info(
+            logger.info(
                 f"Selecting training datasets to eliminate with {self.prune_fn.__name__}..."
             )
             nc = len(self.constituents)
             self.constituents = [c for c in self.constituents if not self.prune_fn(c)]
-            self.log.info(
+            logger.info(
                 f"Removed {nc-len(self.constituents)} InferenceDatasets, leaving {nc}."
             )
                           
         else:
-            self.log.warning("Prune called but no prune_fn attribute set. Doing nothing.")
+            logger.warning("Prune called but no prune_fn attribute set. Doing nothing.")
             
     @property
     def prepared(self):
@@ -248,7 +248,7 @@ class InferenceDataset(BaseInferenceDataset):
         try:
             self.image_src = Path(image_src)
         except TypeError:
-            self.log.debug(
+            logger.debug(
                 "Attempting to interpret image/shape arguments as matching "
                 "iterables"
             )
@@ -289,20 +289,20 @@ class InferenceDataset(BaseInferenceDataset):
                              f"constructing composite inference dataset")
 
     def load_input_array(self):
-        self.log.debug(f"loading input array for {self.image_src.parts[-1]}")
+        logger.debug(f"loading input array for {self.image_src.parts[-1]}")
         self.image_reader.load_array()
-        self.log.debug(f"done loading input array for {self.image_src.parts[-1]}")
+        logger.debug(f"done loading input array for {self.image_src.parts[-1]}")
 
     def validate_input_array(self):
-        self.log.debug(f"validating arrays")
+        logger.debug(f"validating arrays")
         self.mask_writer.validate_array(self.image_validation_function)()
-        self.log.debug(f"done validating arrays")
+        logger.debug(f"done validating arrays")
 
     def make_pipeline(self):
         if self.image_pipeline_factory is None:
             self.pipeline = None
         else:
-            self.log.debug("Assigning pipeline...")
+            logger.debug("Assigning pipeline...")
             self.pipeline = self.image_pipeline_factory()
 
     def prepare(self, validate=False):
@@ -321,7 +321,7 @@ class InferenceDataset(BaseInferenceDataset):
             Boolean flag. If True, first runs image_validation_function on the input 
             raster array and raises an exception if it returns False.
         """
-        self.log.debug("Obtaining arrays...")
+        logger.debug("Obtaining arrays...")
         self.load_input_array()
         # validate is run already if arrays are cached
         if validate:
@@ -330,9 +330,9 @@ class InferenceDataset(BaseInferenceDataset):
         self.make_pipeline()
         if self.pipeline is not None:
             self._X = self.pipeline.fit_transform(self._X)
-            self.log.info(f"Image pipeline for {self.image_src.parts[-1]} done!")
+            logger.info(f"Image pipeline for {self.image_src.parts[-1]} done!")
         self.prepared = True
-        self.log.info("Input array prepared for inference!")
+        logger.info("Input array prepared for inference!")
 
     @property
     def y_chunks(self):
@@ -373,12 +373,11 @@ class InferenceDataset(BaseInferenceDataset):
             generated name.
         
         """
-        self.log.info(f"Scheduling inference on {self.image_src}...")
+        logger.info(f"Scheduling inference on {self.image_src}...")
         model.stop_training = True
         # schedule inference on slices
         self._y = self.X.map_blocks(
             model.predict,
-            dtype=np.float32,
             chunks=self.y_chunks
         )
         # set filename for output raster based on model used
@@ -420,7 +419,7 @@ class InferenceDataset(BaseInferenceDataset):
         """
         if not hasattr(self, '_y'):
             raise Exception("Inference not scheduled - pass a model to schedule_inference first.")
-        self.log.info(f"Writing mask to file {self.mask_tar}...")
+        logger.info(f"Writing mask to file {self.mask_tar}...")
         t0 = pc()
         y_tiled = self.pipeline.named_steps['tiler'].inverse_transform(self.y)
         # slice out the part corresponding to the input array incase padding to window size
@@ -434,7 +433,7 @@ class InferenceDataset(BaseInferenceDataset):
         self.mask_writer.write_raster(overwrite=overwrite)
         # ensure memory cleared
         gc.collect()
-        self.log.info(f"Writing mask to file complete in {pc() - t0:.2f}s!")
+        logger.info(f"Writing mask to file complete in {pc() - t0:.2f}s!")
 
     @require_attr_true('prepared')
     def get_X(self):
@@ -454,7 +453,7 @@ class InferenceDataset(BaseInferenceDataset):
         return self.get_y()
 
     def delete_input_raster(self):
-        self.log.info(f"Deleting input inference raster {self.image_src}")
+        logger.info(f"Deleting input inference raster {self.image_src}")
         os.remove(self.image_src)
 
 

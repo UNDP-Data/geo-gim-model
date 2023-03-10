@@ -17,7 +17,6 @@ from pathlib import Path
 
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -50,6 +49,7 @@ def join(loader, node):
 # specify config yaml path default
 YML_PATH = get_config_path()
 
+
 def verify_path_exists(path, raise_exc=True):
     """ Check a path exists and raise a FileNotFoundError if not
     """
@@ -59,6 +59,7 @@ def verify_path_exists(path, raise_exc=True):
             raise FileNotFoundError(msg)
         # warn
         logger.warning(msg)
+
 
 # -----------------------------------------------------------------------------
 # register the tag handler

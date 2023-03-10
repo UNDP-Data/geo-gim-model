@@ -19,29 +19,23 @@
     split individual datasets into submodules. For this may need to slightly
     redesign the tag descriptor or introspect the module namespace for Datasets.
 """
+import logging
+import operator
 import os
 import re
-import itertools
-import operator
-import sqlalchemy as db
-import numpy as np
-import pandas as pd
-import gim_cv.config as cfg
-from pathlib import Path, PosixPath
 from functools import partial, reduce
-from sqlalchemy.engine.url import URL
-from gim_cv.preprocessing import (get_image_training_pipeline,
-                                        get_binary_mask_training_pipeline,
-                                        get_image_inference_pipeline,
-                                        BinariserRGB)
+from pathlib import Path
+
+import gim_cv.config as cfg
 from gim_cv.inference import InferenceDataset, CompositeInferenceDataset
-from gim_cv.orchestration import download_extract_translate
+from gim_cv.preprocessing import (get_image_training_pipeline,
+                                  get_binary_mask_training_pipeline,
+                                  get_image_inference_pipeline,
+                                  BinariserRGB)
 from gim_cv.training import TrainingDataset, CompositeTrainingDataset
 from gim_cv.utils import RegisteredAttribute, free_from_white_pixels, require_attr_true
 
-import logging
-
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 # global dataset registry
 DATASETS = {}
@@ -345,7 +339,7 @@ class Dataset:
 
     def delete_image_files(self, force=False):
         if self.image_download_fn is not None or force:
-            self.log.info(f"Deleting local image files for dataset {self.tag}...")
+            logger.info(f"Deleting local image files for dataset {self.tag}...")
             for p in self.image_paths:
                 os.remove(p)
         else:
@@ -354,7 +348,7 @@ class Dataset:
 
     def delete_mask_files(self, force=False):
         if self.mask_download_fn is not None or force:
-            self.log.info(f"Deleting local mask files for dataset {self.tag}...")
+            logger.info(f"Deleting local mask files for dataset {self.tag}...")
             for p in self.mask_paths:
                 os.remove(p)
         else:
@@ -487,18 +481,18 @@ class Dataset:
             )
             for im_src in self.image_paths
         ]
-        self.log.debug(f"Combine datasets: {datasets}")
+        logger.debug(f"Combine datasets: {datasets}")
         if len(datasets) == 1:
             datasets = CompositeInferenceDataset(constituents=datasets)
         elif len(datasets) > 1:
             datasets = reduce(operator.add, datasets)
         else:
-            self.log.warning(f"no datasets identified in load_inference_data for {self.tag}?")
+            logger.warning(f"no datasets identified in load_inference_data for {self.tag}?")
         return datasets
 
 
     def print_summary(self):
-        self.log.info(f"{self} with: {len(self.image_paths)} image/mask pairs")
+        logger.info(f"{self} with: {len(self.image_paths)} image/mask pairs")
 
 
 ### ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*
@@ -677,368 +671,377 @@ ds_pots = Dataset(
 
 
 # connect to the database containing URLs and metadata for remote rasters
-db_config = {
-    'drivername': 'sqlite',
-    'database' : str(cfg.sqlite_db_path)
-}
-db_url = URL(**db_config)
+# db_config = {
+#     'drivername': 'sqlite',
+#     'database' : str(cfg.sqlite_db_path)
+# }
+# db_url = URL(**db_config)
 
 
 ### FLANDERS (on demand dataset) ----------------------
-def get_flanders_dataset_table(db_url=db_url,
-                               table_name='vlaanderen_ortho_datasets'):
-    """
-    Connect to a database (normally local SQLite) containing a table with
-    webscraped data used to build datasets (file URLs, acquisition years, ...)
-    and return a pandas dataframe of this table to be used for downloading the
-    linked files etc
+# def get_flanders_dataset_table(db_url=db_url,
+#                                table_name='vlaanderen_ortho_datasets'):
+#     """
+#     Connect to a database (normally local SQLite) containing a table with
+#     webscraped data used to build datasets (file URLs, acquisition years, ...)
+#     and return a pandas dataframe of this table to be used for downloading the
+#     linked files etc
+#
+#     Parameters
+#     ----------
+#     db_url: str, optional
+#         URL to SQLite database with dataset metadata table (which is webscraped
+#         - see scrapers)
+#
+#     table_name: str, optional
+#         The table name for the flanders datasets in said database
+#
+#     Returns
+#     -------
+#     :obj:`pandas.DataFrame`:
+#         dataframe of metadata used to build datasets of remote rasters
+#
+#     """
+#     # read table from database
+#     engine = db.create_engine(db_url)
+#     metadata = db.MetaData(engine)
+#     # reflect db schema to MetaData
+#     metadata.reflect(bind=engine)
+#     with engine.connect() as conn:
+#         # get the vlaanderen ortho url data
+#         ortho_datasets = db.Table(table_name,
+#                                   metadata,
+#                                   autoload=True,
+#                                   autoload_with=engine)
+#         query = db.select([ortho_datasets])
+#         df = pd.read_sql(query, conn)
+#     return df
+#
+# inference_vol_path_flanders = cfg.output_path
+# input_raster_dir_flanders = (
+#     inference_vol_path_flanders / Path('input_rasters/vlaanderen')
+# )
+#
+#
+# def prepare_flanders_dataset_table(df,
+#                                    suffix_regex='(K(BL_)?)?\d{1,2}$',
+#                                    group_datasets_by=['region','period','scale_str'],
+#                                    forbid_col_regexes=[('download_url', '.*50cm.*')],
+#                                    eyeball_check=False):
+#     """
+#     Cleans raw metadata table and creates dataset_id column for flanders orthos
+#
+#     Parameters
+#     ----------
+#     df: :obj:`pandas.DataFrame`
+#         A dataframe containing the SQL table with raster URLs and metadata.
+#         Generated by the `get_flanders_dataset_table` function.
+#     suffix_regex: str, optional
+#         A Regex expression matching an area code in the raster filename
+#     group_datasets_by: list of str, optional
+#         Columns by which to group the rasters, forming dataset tags by each
+#         unique combination of these
+#     forbid_col_regexes: list of (str, str)
+#         List specifying (column, pattern) pairs, such that any entries in column
+#         which match pattern will be ignored
+#
+#     Returns
+#     -------
+#     :obj:`pandas.DataFrame`:
+#         A cleaned dataframe of raster metadata with a dataset_id column used to
+#         collect rasters into datasets to be downloaded
+#     """
+#     # get files with acceptable map codes in their names
+#     df = df[df['suffix'].str.match(suffix_regex)]
+#     # eliminate entries where columns match forbidden regexes
+#     for col, regex in forbid_col_regexes:
+#         df = df[~df[col].str.match(regex)]
+#     # patch 30cm images' resolution
+#     df.loc[df[df['download_url'].str.match('.*30cm.*')].index, 'scale'] = 0.3
+#     df.loc[:, 'scale_str'] = (df.scale*100).astype(np.int32).astype('str') + 'cm'
+#     # create ids to group together all files with the same values for
+#     # group_datasets_by
+#     df['dataset_id'] = df[group_datasets_by].agg('_'.join, axis=1)
+#     df = df.drop('scale_str', axis=1)
+#     # check
+#     if eyeball_check:
+#         print("Does this look reasonable?")
+#         print(df.groupby('dataset_id').count())
+#     return df
+#
+#
+# def get_flanders_datasets(db_url=db_url,
+#                           table_name='vlaanderen_ortho_datasets',
+#                           table_prepare_fn=prepare_flanders_dataset_table,
+#                           img_download_dir=input_raster_dir_flanders,
+#                           file_download_fn=download_extract_translate,
+#                           overwrite=False,
+#                           target_spatial_resolution=1.0,
+#                           return_table=False,
+#                           download_timeout=7200,
+#                           **prepare_kwargs):
+#     """
+#     Get a list of Dataset objects corresponding each Flemish ortho year
+#
+#     Datasets contain flanders orthophotos and their appropriate capture time,
+#     spatial resolution etc. These have assigned methods to download the
+#     associated archives on demand, extract them to obtain the rasters, and
+#     optionally resample these to a target spatial resolution as a postprocessing
+#     step.
+#
+#     The URLs and metadata used to build the datasets are defined in a SQLite
+#     database at db_url, which is in turn built by the scraper in `gim_cv.scrapers`.
+#
+#     Parameters
+#     ----------
+#     db_url: str, optional
+#         URL to SQLite database with dataset metadata table (which is
+#         webscraped - see `gim_cv.scrapers` submodule)
+#
+#     table_name: str, optional
+#         The table name for the flanders datasets in said database
+#
+#     table_prepare_fn: callable, optional
+#         Preprocessing function for cleaning the raw SQL table dataframe in
+#         pandas and returning the df
+#
+#     img_download_dir: str or :obj:`pathlib.Path`, optional
+#         Parent directory into which to download dataset files
+#
+#     file_download_fn: callable, optional
+#         function with signature: (save_dir, urls, filenames, timeout,
+#         target_scales, overwrite) which is assigned as a method of the returned
+#         Datasets so that they can download all the necessary files on demand
+#         from the appropriate URLs. this should download and extract the raster
+#         files and return a list of the local paths
+#
+#     overwrite: bool, optional
+#         Flag controlling re-download/overwrite behaviour if raster files are
+#         identified as already present locally
+#
+#     target_spatial_resolution: float or NoneType, optional
+#         Sets the target spatial resolution which the downloaded rasters will be
+#         automatically rescaled to.
+#
+#     return_table: bool, optional
+#         Flags whether to alternatively return a 2-tuple containing a dataframe
+#         of the metadata pertaining to the rasters in each dataset, in addition
+#         to the Dataset objects themselves.
+#
+#     download_timeout: int, optional
+#         Downloads auto-fail after this many seconds
+#
+#     Returns
+#     -------
+#     datasets: list of :obj:`Dataset`
+#         A list of Datasets, one per ortho year present, each with the download
+#         method `image_download_fn` set to pull rasters from the appropriate URLs
+#         If the return_table argument is True, return a 2-tuple with (this list,
+#         raster metadata dataframe) for inspection.
+#
+#     """
+#     df = get_flanders_dataset_table(db_url, table_name)
+#     # preprocess etc, clean, remove unwanted files...
+#     df = table_prepare_fn(df, **prepare_kwargs)
+#     # make dataset objects from dataframe of urls, filenames and dataset ids
+#     datasets = []
+#     gb = df.groupby('dataset_id')
+#     for ds_id, ixs in gb.groups.items():
+#         # get the rows with the appropriate urls/file metadata
+#         ds_df = df.loc[ixs]
+#         if target_spatial_resolution is not None:
+#             tsr = target_spatial_resolution
+#         else:
+#             target_spatial_resolution = ds_df.iloc[0].scale
+#         resample_factor = ds_df.iloc[0].scale / tsr
+#         rs_str =  f'_resampled_{int(round(resample_factor*100))}pct' if resample_factor != 1. else ''
+#         # create a dataset with the appropriate tag and spatial resolution,
+#         # and bind the custom download function
+#         ds = Dataset(tag = ds_id + rs_str,
+#                      spatial_resolution = target_spatial_resolution)
+#         # assign a specific download function, with the appropriate urls and paths set from db
+#         ds.image_download_fn = partial(
+#             file_download_fn,
+#             save_dir = img_download_dir / Path(ds_id),
+#             urls = ds_df.download_url.tolist(),
+#             filenames = ds_df.filename.tolist(),
+#             timeout = download_timeout,
+#             target_scales = itertools.repeat(resample_factor),
+#             overwrite = overwrite
+#         )
+#         datasets.append(ds)
+#     if return_table:
+#         return datasets, df
+#     return datasets
+#
+#
+#
+# # combine
+# flanders_datasets = get_flanders_datasets(
+#     db_url,
+#     file_download_fn=download_extract_translate,
+#     overwrite=False
+# )
+#
+# # -- add corrupted tiles as fixed dataset
+# flanders_datasets.append(
+#     Dataset(tag='Vlaanderen_2000-2003_30cm_missing_tiles_resampled_30pct',
+#             spatial_resolution=1.,
+#             image_paths = sorted(
+#                 [f for f in (input_raster_dir_flanders / Path('Vlaanderen_2000-2003_30cm_missing_tiles')).glob('*.tif')]
+#             )
+#     )
+# )
+#
+#
+# ### WALLONIA ----------------------
+# inference_vol_path_wallonia = cfg.output_path
+# input_raster_dir_wallonia = (
+#     inference_vol_path_wallonia / Path('input_rasters/wallonia')
+# )
+my_datasets = []
 
-    Parameters
-    ----------
-    db_url: str, optional
-        URL to SQLite database with dataset metadata table (which is webscraped
-        - see scrapers)
-
-    table_name: str, optional
-        The table name for the flanders datasets in said database
-
-    Returns
-    -------
-    :obj:`pandas.DataFrame`:
-        dataframe of metadata used to build datasets of remote rasters
-
-    """
-    # read table from database
-    engine = db.create_engine(db_url)
-    metadata = db.MetaData(engine)
-    # reflect db schema to MetaData
-    metadata.reflect(bind=engine)
-    with engine.connect() as conn:
-        # get the vlaanderen ortho url data
-        ortho_datasets = db.Table(table_name,
-                                  metadata,
-                                  autoload=True,
-                                  autoload_with=engine)
-        query = db.select([ortho_datasets])
-        df = pd.read_sql(query, conn)
-    return df
-
-inference_vol_path_flanders = cfg.output_path
-input_raster_dir_flanders = (
-    inference_vol_path_flanders / Path('input_rasters/vlaanderen')
-)
-
-
-def prepare_flanders_dataset_table(df,
-                                   suffix_regex='(K(BL_)?)?\d{1,2}$',
-                                   group_datasets_by=['region','period','scale_str'],
-                                   forbid_col_regexes=[('download_url', '.*50cm.*')],
-                                   eyeball_check=False):
-    """
-    Cleans raw metadata table and creates dataset_id column for flanders orthos
-
-    Parameters
-    ----------
-    df: :obj:`pandas.DataFrame`
-        A dataframe containing the SQL table with raster URLs and metadata.
-        Generated by the `get_flanders_dataset_table` function.
-    suffix_regex: str, optional
-        A Regex expression matching an area code in the raster filename
-    group_datasets_by: list of str, optional
-        Columns by which to group the rasters, forming dataset tags by each
-        unique combination of these
-    forbid_col_regexes: list of (str, str)
-        List specifying (column, pattern) pairs, such that any entries in column
-        which match pattern will be ignored
-
-    Returns
-    -------
-    :obj:`pandas.DataFrame`:
-        A cleaned dataframe of raster metadata with a dataset_id column used to
-        collect rasters into datasets to be downloaded
-    """
-    # get files with acceptable map codes in their names
-    df = df[df['suffix'].str.match(suffix_regex)]
-    # eliminate entries where columns match forbidden regexes
-    for col, regex in forbid_col_regexes:
-        df = df[~df[col].str.match(regex)]
-    # patch 30cm images' resolution
-    df.loc[df[df['download_url'].str.match('.*30cm.*')].index, 'scale'] = 0.3
-    df.loc[:, 'scale_str'] = (df.scale*100).astype(np.int32).astype('str') + 'cm'
-    # create ids to group together all files with the same values for
-    # group_datasets_by
-    df['dataset_id'] = df[group_datasets_by].agg('_'.join, axis=1)
-    df = df.drop('scale_str', axis=1)
-    # check
-    if eyeball_check:
-        print("Does this look reasonable?")
-        print(df.groupby('dataset_id').count())
-    return df
-
-
-def get_flanders_datasets(db_url=db_url,
-                          table_name='vlaanderen_ortho_datasets',
-                          table_prepare_fn=prepare_flanders_dataset_table,
-                          img_download_dir=input_raster_dir_flanders,
-                          file_download_fn=download_extract_translate,
-                          overwrite=False,
-                          target_spatial_resolution=1.0,
-                          return_table=False,
-                          download_timeout=7200,
-                          **prepare_kwargs):
-    """
-    Get a list of Dataset objects corresponding each Flemish ortho year
-
-    Datasets contain flanders orthophotos and their appropriate capture time,
-    spatial resolution etc. These have assigned methods to download the
-    associated archives on demand, extract them to obtain the rasters, and
-    optionally resample these to a target spatial resolution as a postprocessing
-    step.
-
-    The URLs and metadata used to build the datasets are defined in a SQLite
-    database at db_url, which is in turn built by the scraper in `gim_cv.scrapers`.
-
-    Parameters
-    ----------
-    db_url: str, optional
-        URL to SQLite database with dataset metadata table (which is
-        webscraped - see `gim_cv.scrapers` submodule)
-
-    table_name: str, optional
-        The table name for the flanders datasets in said database
-
-    table_prepare_fn: callable, optional
-        Preprocessing function for cleaning the raw SQL table dataframe in
-        pandas and returning the df
-
-    img_download_dir: str or :obj:`pathlib.Path`, optional
-        Parent directory into which to download dataset files
-
-    file_download_fn: callable, optional
-        function with signature: (save_dir, urls, filenames, timeout,
-        target_scales, overwrite) which is assigned as a method of the returned
-        Datasets so that they can download all the necessary files on demand
-        from the appropriate URLs. this should download and extract the raster
-        files and return a list of the local paths
-
-    overwrite: bool, optional
-        Flag controlling re-download/overwrite behaviour if raster files are
-        identified as already present locally
-
-    target_spatial_resolution: float or NoneType, optional
-        Sets the target spatial resolution which the downloaded rasters will be
-        automatically rescaled to.
-
-    return_table: bool, optional
-        Flags whether to alternatively return a 2-tuple containing a dataframe
-        of the metadata pertaining to the rasters in each dataset, in addition
-        to the Dataset objects themselves.
-
-    download_timeout: int, optional
-        Downloads auto-fail after this many seconds
-
-    Returns
-    -------
-    datasets: list of :obj:`Dataset`
-        A list of Datasets, one per ortho year present, each with the download
-        method `image_download_fn` set to pull rasters from the appropriate URLs
-        If the return_table argument is True, return a 2-tuple with (this list,
-        raster metadata dataframe) for inspection.
-
-    """
-    df = get_flanders_dataset_table(db_url, table_name)
-    # preprocess etc, clean, remove unwanted files...
-    df = table_prepare_fn(df, **prepare_kwargs)
-    # make dataset objects from dataframe of urls, filenames and dataset ids
-    datasets = []
-    gb = df.groupby('dataset_id')
-    for ds_id, ixs in gb.groups.items():
-        # get the rows with the appropriate urls/file metadata
-        ds_df = df.loc[ixs]
-        if target_spatial_resolution is not None:
-            tsr = target_spatial_resolution
-        else:
-            target_spatial_resolution = ds_df.iloc[0].scale
-        resample_factor = ds_df.iloc[0].scale / tsr
-        rs_str =  f'_resampled_{int(round(resample_factor*100))}pct' if resample_factor != 1. else ''
-        # create a dataset with the appropriate tag and spatial resolution,
-        # and bind the custom download function
-        ds = Dataset(tag = ds_id + rs_str,
-                     spatial_resolution = target_spatial_resolution)
-        # assign a specific download function, with the appropriate urls and paths set from db
-        ds.image_download_fn = partial(
-            file_download_fn,
-            save_dir = img_download_dir / Path(ds_id),
-            urls = ds_df.download_url.tolist(),
-            filenames = ds_df.filename.tolist(),
-            timeout = download_timeout,
-            target_scales = itertools.repeat(resample_factor),
-            overwrite = overwrite
-        )
-        datasets.append(ds)
-    if return_table:
-        return datasets, df
-    return datasets
-
-
-
-# combine
-flanders_datasets = get_flanders_datasets(
-    db_url,
-    file_download_fn=download_extract_translate,
-    overwrite=False
-)
-
-# -- add corrupted tiles as fixed dataset
-flanders_datasets.append(
-    Dataset(tag='Vlaanderen_2000-2003_30cm_missing_tiles_resampled_30pct',
-            spatial_resolution=1.,
-            image_paths = sorted(
-                [f for f in (input_raster_dir_flanders / Path('Vlaanderen_2000-2003_30cm_missing_tiles')).glob('*.tif')]
-            )
-    )
-)
-
-
-### WALLONIA ----------------------
-inference_vol_path_wallonia = cfg.output_path
-input_raster_dir_wallonia = (
-    inference_vol_path_wallonia / Path('input_rasters/wallonia')
-)
-wallonia_datasets = []
-
-# iirc one or two rasters caused issues initially so were ignored, and were
-# generated again down the line as an additional "missing" dataset
-dodgy_rasters_94_00 = [
-    input_raster_dir_wallonia /
-    Path('ORTHOS_1994-2000/TIFF_RGB/ORTHO_1994_2000__38_28_W_resampled_40pct.tif'),
-]
-
-wallonia_datasets.append(
-    Dataset(tag='Wallonia_1994-2000_40cm_resampled_40pct',
-            spatial_resolution=1.,
-            image_paths = sorted(
-                [
-                    f for f in (
-                        input_raster_dir_wallonia / Path('ORTHOS_1994-2000')
-                    ).glob('**/*.tif')
-                    if Path(f) not in dodgy_rasters_94_00
-                ]
-            )
-    )
-)
-
-wallonia_datasets.append(
-    Dataset(tag='Wallonia_2006-2007_50cm_resampled_50pct',
-            spatial_resolution=1.,
-            image_paths = sorted(
-                [
-                    f for f in (
-                        input_raster_dir_wallonia / Path('Orthos_2006-2007')
-                    ).glob('**/*.tif')
-                ]
-            )
-    )
-)
-
-wallonia_datasets.append(
-    Dataset(tag='Wallonia_2009-2010_25cm_resampled_25pct',
-            spatial_resolution=1.,
-            image_paths = sorted(
-                [
-                    f for f in (
-                        input_raster_dir_wallonia / Path('Orthos_2009-2010')
-                    ).glob('**/*.tif')
-                ]
-            )
-    )
-)
-
-wallonia_datasets.append(
-    Dataset(tag='Wallonia_2013_25cm_resampled_25pct',
-            spatial_resolution=1.,
-            image_paths = sorted(
-                [
-                    f for f in (
-                        input_raster_dir_wallonia / Path('2013')
-                    ).glob('**/*.tif')
-                ]
-            )
-    )
-)
-
-wallonia_datasets.append(
-    Dataset(tag='Wallonia_2015_25cm_resampled_25pct',
-            spatial_resolution=1.,
-            image_paths = sorted(
-                [
-                    f for f in (
-                        input_raster_dir_wallonia / Path('Ortho2015')
-                    ).glob('**/*.tif')
-                ]
-            )
-    )
-)
-
-wallonia_datasets.append(
-    Dataset(tag='Wallonia_2019_25cm_resampled_25pct',
-            spatial_resolution=1.,
-            image_paths = sorted(
-                [
-                    f for f in (
-                        input_raster_dir_wallonia / Path('Orthos2019')
-                    ).glob('**/*.tif')
-                ]
-            )
-    )
-)
-
-# see above "dodgy_rasters_94_00" comment
-_w94mdpath = input_raster_dir_wallonia / Path('ORTHOS_1994-2000_missing_tiles')
-wallonia_datasets.append(
-    Dataset(tag='Wallona_1994-2000_40cm_missing_tiles_resampled_40pct',
-            spatial_resolution=1.,
-            image_paths=sorted(
-                [f for f in _w94mdpath.glob('*_resampled_40pct.tif')]
-            )
-    )
-)
-
-def get_wallonia_datasets():
-    """
-    Returns a list of Dataset objects pointing to the wallonia orthophotos for
-    each acquisition year.
-
-    These are expected to be present locally as there's no convenient download
-    links like there are for flanders.
-
-    Returns
-    -------
-    list of :obj:`Dataset`
-    """
-    global wallonia_datasets
-    return wallonia_datasets
-
-# Frontier Development lab open dataset
-
-# Columbia Medellin dataset 
-ds_med_19_40cm_rgb = Dataset(
-    tag='col_med_19_40cm',
-    spatial_resolution=.4,
-    image_paths = [cfg.volumes_data_path / Path('datasets/medellin_oxford_inria/Medellin_40cm.tif')],
-    mask_paths = [cfg.volumes_data_path / Path('datasets/medellin_oxford_inria/Medellin_ground_truth.tif')]
-)
-# Sudan ElDaein dataset 
-ds_eldaien_19_40cm_rgb = Dataset(
-    tag='sud_eldaien_19_40cm',
-    spatial_resolution=.4,
-    image_paths = [cfg.volumes_data_path / Path('datasets/eldaien_oxford_inria/ElDaien_40cm.tif')],
-    mask_paths = [cfg.volumes_data_path / Path('datasets/eldaien_oxford_inria/ElDaien_40cm_ground_truth_corrected.tif')]
-)
-# Nigeria Makoko dataset 
-ds_mak_19_50cm_rgb = Dataset(
-    tag='nig_mak_19_50cm',
-    spatial_resolution=.5,
-    image_paths = [cfg.volumes_data_path / Path('datasets/makoko_oxford_inria/Makoko_50cm.tif')],
-    mask_paths = [cfg.volumes_data_path / Path('datasets/makoko_oxford_inria/Makoko_50cm_large_ground_truth.tif')]
-)
+my_ds = Dataset(tag='my_ds',
+                            image_paths = [
+                                'TRAIN/rasters/Kibera_30cm.tif',
+                            ],
+                            mask_paths = [
+                                'TRAIN/masks/Kibera_30cm_ground_truth.tif',
+                            ], # say this one doesn't have any ground truth
+                            spatial_resolution=0.4)
+#
+# # iirc one or two rasters caused issues initially so were ignored, and were
+# # generated again down the line as an additional "missing" dataset
+# dodgy_rasters_94_00 = [
+#     input_raster_dir_wallonia /
+#     Path('ORTHOS_1994-2000/TIFF_RGB/ORTHO_1994_2000__38_28_W_resampled_40pct.tif'),
+# ]
+# #
+# my_datasets.append(
+#     Dataset(tag='Medellin-40cm',
+#             spatial_resolution=0.4,
+#             image_paths = sorted(
+#                 [
+#                     f for f in (
+#                         input_raster_dir_wallonia / Path('ORTHOS_1994-2000')
+#                     ).glob('**/*.tif')
+#                     if Path(f) not in dodgy_rasters_94_00
+#                 ]
+#             )
+#     )
+# )
+# #
+# wallonia_datasets.append(
+#     Dataset(tag='Wallonia_2006-2007_50cm_resampled_50pct',
+#             spatial_resolution=1.,
+#             image_paths = sorted(
+#                 [
+#                     f for f in (
+#                         input_raster_dir_wallonia / Path('Orthos_2006-2007')
+#                     ).glob('**/*.tif')
+#                 ]
+#             )
+#     )
+# )
+#
+# wallonia_datasets.append(
+#     Dataset(tag='Wallonia_2009-2010_25cm_resampled_25pct',
+#             spatial_resolution=1.,
+#             image_paths = sorted(
+#                 [
+#                     f for f in (
+#                         input_raster_dir_wallonia / Path('Orthos_2009-2010')
+#                     ).glob('**/*.tif')
+#                 ]
+#             )
+#     )
+# )
+#
+# wallonia_datasets.append(
+#     Dataset(tag='Wallonia_2013_25cm_resampled_25pct',
+#             spatial_resolution=1.,
+#             image_paths = sorted(
+#                 [
+#                     f for f in (
+#                         input_raster_dir_wallonia / Path('2013')
+#                     ).glob('**/*.tif')
+#                 ]
+#             )
+#     )
+# )
+#
+# wallonia_datasets.append(
+#     Dataset(tag='Wallonia_2015_25cm_resampled_25pct',
+#             spatial_resolution=1.,
+#             image_paths = sorted(
+#                 [
+#                     f for f in (
+#                         input_raster_dir_wallonia / Path('Ortho2015')
+#                     ).glob('**/*.tif')
+#                 ]
+#             )
+#     )
+# )
+#
+# wallonia_datasets.append(
+#     Dataset(tag='Wallonia_2019_25cm_resampled_25pct',
+#             spatial_resolution=1.,
+#             image_paths = sorted(
+#                 [
+#                     f for f in (
+#                         input_raster_dir_wallonia / Path('Orthos2019')
+#                     ).glob('**/*.tif')
+#                 ]
+#             )
+#     )
+# )
+#
+# # see above "dodgy_rasters_94_00" comment
+# _w94mdpath = input_raster_dir_wallonia / Path('ORTHOS_1994-2000_missing_tiles')
+# wallonia_datasets.append(
+#     Dataset(tag='Wallona_1994-2000_40cm_missing_tiles_resampled_40pct',
+#             spatial_resolution=1.,
+#             image_paths=sorted(
+#                 [f for f in _w94mdpath.glob('*_resampled_40pct.tif')]
+#             )
+#     )
+# )
+#
+# def get_wallonia_datasets():
+#     """
+#     Returns a list of Dataset objects pointing to the wallonia orthophotos for
+#     each acquisition year.
+#
+#     These are expected to be present locally as there's no convenient download
+#     links like there are for flanders.
+#
+#     Returns
+#     -------
+#     list of :obj:`Dataset`
+#     """
+#     global wallonia_datasets
+#     return wallonia_datasets
+#
+# # Frontier Development lab open dataset
+#
+# # Columbia Medellin dataset
+# ds_med_19_40cm_rgb = Dataset(
+#     tag='col_med_19_40cm',
+#     spatial_resolution=.4,
+#     image_paths = [cfg.volumes_data_path / Path('datasets/medellin_oxford_inria/Medellin_40cm.tif')],
+#     mask_paths = [cfg.volumes_data_path / Path('datasets/medellin_oxford_inria/Medellin_ground_truth.tif')]
+# )
+# # Sudan ElDaein dataset
+# ds_eldaien_19_40cm_rgb = Dataset(
+#     tag='sud_eldaien_19_40cm',
+#     spatial_resolution=.4,
+#     image_paths = [cfg.volumes_data_path / Path('datasets/eldaien_oxford_inria/ElDaien_40cm.tif')],
+#     mask_paths = [cfg.volumes_data_path / Path('datasets/eldaien_oxford_inria/ElDaien_40cm_ground_truth_corrected.tif')]
+# )
+# # Nigeria Makoko dataset
+# ds_mak_19_50cm_rgb = Dataset(
+#     tag='nig_mak_19_50cm',
+#     spatial_resolution=.5,
+#     image_paths = [cfg.volumes_data_path / Path('datasets/makoko_oxford_inria/Makoko_50cm.tif')],
+#     mask_paths = [cfg.volumes_data_path / Path('datasets/makoko_oxford_inria/Makoko_50cm_large_ground_truth.tif')]
+# )

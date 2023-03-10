@@ -37,7 +37,7 @@ from gim_cv.dask_tools import (stack_interleave_flatten, pair_chunk_generator,
                                get_incomplete_blocks)
 
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def from_first_constituent(f):
@@ -102,7 +102,7 @@ def pair_batch_generator(imgs:da.Array,
         # for each image/mask chunk in RAM, do a chunk-epoch worth of
         # data-augmented batch generation
         for i, (image_chunk, mask_chunk) in enumerate(chunk_gen):
-            log.debug(f"Dask Chunk: {i+1}\n")
+            logger.debug(f"Dask Chunk: {i+1}\n")
             n_samples_chunk = image_chunk.shape[axis]
             n_batches_chunk = n_samples_chunk/batch_size
             # create batch/augmentation generators
@@ -121,7 +121,7 @@ def pair_batch_generator(imgs:da.Array,
             train_generator = zip(image_generator, mask_generator)
             batches = 0 # track batches
             for img_batch, mask_batch in train_generator:
-                log.debug(f"Batch: {batches}")
+                logger.debug(f"Batch: {batches}")
                 batches += 1
                 yield img_batch, mask_batch
                 del img_batch, mask_batch
@@ -134,7 +134,7 @@ def pair_batch_generator(imgs:da.Array,
             gc.collect()
         epochs += 1
         #f verbose:
-        log.debug(f"Finished generating epoch: {epochs}!\n")
+        logger.debug(f"Finished generating epoch: {epochs}!\n")
 
 
 def augment_image_and_mask(img, mask, augger):
@@ -188,11 +188,11 @@ def augment_all(X, y, augger, client):
     try:
         stacked = np.stack(augmented, axis=0)
     except ValueError:
-        log.error("pre-aug arrays X, y:")
-        log.error(X)
-        log.error(y)
-        log.error("stack inputs:")
-        log.error(augmented)
+        logger.error("pre-aug arrays X, y:")
+        logger.error(X)
+        logger.error(y)
+        logger.error("stack inputs:")
+        logger.error(augmented)
         raise
     return stacked[:, :, :, :X.shape[-1]], stacked[:, :, :, X.shape[-1]:]
 
@@ -260,7 +260,7 @@ def fancy_batch_generator(X:da.Array,
         # data-augmented batch generation
         # -- loop over chunks: these are now numpy arrays
         for i, (image_chunk, mask_chunk) in enumerate(chunk_gen):
-            log.debug(f"Dask Chunk: {i+1}\n")
+            logger.debug(f"Dask Chunk: {i+1}\n")
             # get indices of chunk
             n_samples_chunk = image_chunk.shape[0]
             n_batches_chunk = int(n_samples_chunk/batch_size)
@@ -271,7 +271,7 @@ def fancy_batch_generator(X:da.Array,
             start_point, batches = 0, 0 # track processed samples and batches
             # -- loop over batches in chunk
             while True:
-                log.debug(f"Batch: {batches}")
+                logger.debug(f"Batch: {batches}")
                 inds = index[start_point:start_point+batch_size]
                 # augment this batch
                 Xb, yb = augment_all(
@@ -312,7 +312,7 @@ def fancy_batch_generator(X:da.Array,
             #del image_chunk, mask_chunk
         # -- epoch end
         epochs += 1
-        log.debug(f"Finished generating epoch: {epochs}!\n")
+        logger.debug(f"Finished generating epoch: {epochs}!\n")
         
 
 def has_empty_raster(tds:'TrainingDataset') -> bool:
@@ -322,7 +322,7 @@ def has_empty_raster(tds:'TrainingDataset') -> bool:
     """
     tds.load_arrays()
     if tds.image_reader.array.min().compute() == 255:
-        log.info(f"Identified empty input raster: {tds.image_src}")
+        logger.info(f"Identified empty input raster: {tds.image_src}")
         return True
     return False        
 
@@ -347,7 +347,7 @@ def prune_all_black_or_white(X:da.Array, y:da.Array) -> Tuple[da.Array, da.Array
     :obj:`da.Array`, :obj:`da.Array`
         The pruned image/mask arrays
     """
-    log.debug("Pruning all black/white image/mask entries...")
+    logger.debug("Pruning all black/white image/mask entries...")
     min_pixel_vals = X.min(axis=(1,2)).compute()
     max_pixel_vals = X.max(axis=(1,2)).compute()
     all_white = min_pixel_vals == (255, 255, 255)
@@ -733,17 +733,17 @@ class CompositeTrainingDataset(BaseTrainingDataset):
         constituents list if this function returns True.
         """
         if self.prune_fn is not None:
-            self.log.info(
+            logger.info(
                 f"Selecting training datasets to eliminate with {self.prune_fn.__name__}..."
             )
             nc = len(self.constituents)
             self.constituents = [c for c in self.constituents if not self.prune_fn(c)]
-            self.log.info(
+            logger.info(
                 f"Removed {nc-len(self.constituents)} TrainingDatasets, leaving {nc}."
             )
                           
         else:
-            self.log.warning("Prune called but no prune_fn attribute set. Doing nothing.")
+            logger.warning("Prune called but no prune_fn attribute set. Doing nothing.")
     
     def prepare(self, validate=False, shuffle_repeats=4):
         """
@@ -803,7 +803,7 @@ class CompositeTrainingDataset(BaseTrainingDataset):
         self._y_arrs.extend([c.y for c in self.valid_constituents if c.tag is None])
         # inject oversample here
         if self.oversample_fn is not None:
-            self.log.info(
+            logger.info(
                 "Performing oversampling of arrays from different training datasets "
                 f"with function: {self.oversample_fn.__name__}"
             )
@@ -812,7 +812,7 @@ class CompositeTrainingDataset(BaseTrainingDataset):
         self._X_arrs[0] = self._X_arrs[0].rechunk(('auto', -1, -1, -1))
         ideal_chunksize = self._X_arrs[0].chunksize[0]
         # rechunking and aligning chunks with N batches
-        self.log.info("Aligning image/mask array chunks...")
+        logger.info("Aligning image/mask array chunks...")
         aligner = preprocessing.ChunkBatchAligner(self.batch_size, ideal_chunksize)
         for ix in range(len(self._X_arrs)):
             self._X_arrs[ix] = aligner.fit_transform(self._X_arrs[ix])
@@ -828,7 +828,7 @@ class CompositeTrainingDataset(BaseTrainingDataset):
             self._y = da.concatenate(self._y_arrs)
         # finally fold arrays on themselves, flatten, shuffle the blocks and repeat
         # a few times
-        self.log.info("Shuffling datasets together...")
+        logger.info("Shuffling datasets together...")
         self._X, self._y = shuffuhl_together(
             self._X, self._y,
             shuffle_blocks=True,
@@ -847,7 +847,7 @@ class CompositeTrainingDataset(BaseTrainingDataset):
             self._X = da.concatenate([self._X, X_incomplete_blocks])
             self._y = da.concatenate([self._y, y_incomplete_blocks])
         self.composition_prepared = True
-        self.log.info("Composite dataset prepare done!")
+        logger.info("Composite dataset prepare done!")
 
     @property
     def _ca_X(self):
@@ -1057,7 +1057,7 @@ class TrainingDataset(BaseTrainingDataset):
             self.image_src = Path(image_src)
             self.mask_src = Path(mask_src)
         except TypeError:
-            self.log.debug(
+            logger.debug(
                 "Attempting to interpret image/shape arguments as matching "
                 "iterables"
             )
@@ -1101,29 +1101,29 @@ class TrainingDataset(BaseTrainingDataset):
                              f"constructing composite training dataset")
 
     def load_arrays(self, reload=False):
-        self.log.debug(f"loading arrays")
+        logger.debug(f"loading arrays")
         if self.image_reader.array is None or reload:
             self.image_reader.load_array()
         if self.mask_reader.array is None or reload:
             self.mask_reader.load_array()
-        self.log.debug(f"done loading arrays")
+        logger.debug(f"done loading arrays")
 
     def validate_arrays(self):
-        self.log.debug(f"validating arrays")
+        logger.debug(f"validating arrays")
         self.image_reader.validate_array(self.image_validation_function)
         self.mask_reader.validate_array(self.mask_validation_function)
-        self.log.debug(f"done validating arrays")
+        logger.debug(f"done validating arrays")
 
     def make_pipelines(self):
         if self.image_pipeline_factory is None:
             self.image_pipeline = None
         else:
-            self.log.debug("Assigning image pipeline...")
+            logger.debug("Assigning image pipeline...")
             self.image_pipeline = self.image_pipeline_factory()
         if self.mask_pipeline_factory is None:
             self.mask_pipeline = None
         else:
-            self.log.debug("Assigning mask pipeline...")
+            logger.debug("Assigning mask pipeline...")
             self.mask_pipeline = self.mask_pipeline_factory()
 
     def prepare(self, optimise_chunks=True, validate=False):
@@ -1148,45 +1148,45 @@ class TrainingDataset(BaseTrainingDataset):
         -----
         Can skip pipeline step by explicitly setting pipeline = None
         """
-        self.log.debug(f"Obtaining arrays for {self.image_src}, {self.mask_src}...")
+        logger.debug(f"Obtaining arrays for {self.image_src}, {self.mask_src}...")
         self.load_arrays()
         # validate is run already if arrays are cached
         try:
             if validate:
                 self.validate_arrays()
         except InvalidArrayError:
-            self.log.error("Invalid array or mask detected, skipping dataset...")
+            logger.error("Invalid array or mask detected, skipping dataset...")
             self.valid=False
             return
         _X, _y = self.image_reader.array, self.mask_reader.array
         # need spatial chunks to align for resampling pixel losses
         if _X.chunks[:2] != _y.chunks[:2]:
-            self.log.debug(f"Aligning spatial chunks...")
+            logger.debug(f"Aligning spatial chunks...")
             _y = _y.rechunk((_X.chunks[0], _X.chunks[1], *_y.chunks[2:]))
         self._X, self._y = _X, _y
         self.make_pipelines()
         if self.image_pipeline is not None:
             self._X = self.image_pipeline.fit_transform(self._X)
-            self.log.info("Image pipeline done!")
+            logger.info("Image pipeline done!")
         if self.mask_pipeline is not None:
             self._y = self.mask_pipeline.fit_transform(self._y)
-            self.log.info("Mask pipeline done!")
+            logger.info("Mask pipeline done!")
         assert self._X.shape[0] == self._y.shape[0], "Different numbers of images/masks!"
         # apply pruning here before optimising chunks
         if self.prune_patch_fn is not None:
             self._X, self._y = self.prune_patch_fn(self._X, self._y)
-        self.log.debug("Aligning image/mask array chunks...")
+        logger.debug("Aligning image/mask array chunks...")
         self._X = self._X.rechunk(('auto', -1, -1, -1))
         self._y = self._y.rechunk((self._X.chunks[0], -1, -1, -1))
         if optimise_chunks and self.batch_size is not None:
-            self.log.debug("Optimising chunks to factorise into batches...")
+            logger.debug("Optimising chunks to factorise into batches...")
             aligner = preprocessing.ChunkBatchAligner(self.batch_size)
             self._X = aligner.fit_transform(self._X)
             self._y = aligner.transform(self._y)
         if self._X.size == 0 or self._y.size == 0:
             raise ValueError("empty training arrays detected! handle this better in composites?")
         self.prepared = True
-        self.log.info(f"Image/mask arrays from {self.image_src} <-> {self.mask_src} prepared for training!")
+        logger.info(f"Image/mask arrays from {self.image_src} <-> {self.mask_src} prepared for training!")
 
     @property
     def data_uid(self):

@@ -116,7 +116,7 @@ def strong_aug(
     if p_blur:
         aug_list.append(
             A.OneOf([
-                A.MotionBlur(blur_limit=(3, 4), p=1.),
+                A.MotionBlur(blur_limit=(3, 5), p=1.),
                 #A.MedianBlur(blur_limit=(3, 5), p=.1),
                 A.Blur(blur_limit=(3,4), p=1.),
             ], p=p_blur)
@@ -518,7 +518,7 @@ class ImageResampler(TransformerMixin, BaseEstimator):
                                 chunks=self.chunk_cfg_)
         if self.preserve_int:
             if X.dtype == np.uint8 and not self.is_mask:
-                self.log.debug("Casting resampled array back to 8-bit integers...")
+                logger.debug("Casting resampled array back to 8-bit integers...")
                 #rescaled = (rescaled*255.> self.grace_factor).astype(np.uint8)
                 rescaled = da.rint(rescaled*255.).astype(np.uint8)
             elif self.preserve_int and self.is_mask:
@@ -556,7 +556,7 @@ class Tiler(BaseEstimator, TransformerMixin):
         # identify the part that when cropped will nicely divide into windows
         self.cropper_ = WindowFitter(window_dims=self.window_dims).fit(X)
         # prepare transformation of cropped area to stacked windows
-        self.log.debug(f"Shape going into stacker {X.shape}")
+        logger.debug(f"Shape going into stacker {X.shape}")
         self.stacker_ = TileStacker(self.window_dims).fit(
             X[:self.cropper_.row_max_, :self.cropper_.col_max_]
         )
@@ -759,7 +759,7 @@ class Tiler(BaseEstimator, TransformerMixin):
         # identify the part that when cropped will nicely divide into windows
         self.cropper_ = WindowFitter(window_dims=self.window_dims).fit(X)
         # prepare transformation of cropped area to stacked windows
-        self.log.debug(f"Shape going into stacker: {X.shape}")
+        logger.debug(f"Shape going into stacker: {X.shape}")
         self.stacker_ = TileStacker(self.window_dims).fit(
             X[:self.cropper_.row_max_, :self.cropper_.col_max_]
         )
@@ -956,7 +956,7 @@ class OverlappingTiler(TransformerMixin, BaseEstimator):
         dask.array.Array
             Tiled (B, h, w, C) Dask array
         """
-        self.log.debug(f"Dividing array with shape {X.shape} into half-step overlapping tiles...")
+        logger.debug(f"Dividing array with shape {X.shape} into half-step overlapping tiles...")
         self.main_tiler.fit(X)
         self.h_tiler.fit(X[self.half_step[0]:])
         self.w_tiler.fit(X[:, self.half_step[1]:])
@@ -980,7 +980,7 @@ class OverlappingTiler(TransformerMixin, BaseEstimator):
         X_h = self.h_tiler.transform(X[self.half_step[0]:])
         X_w = self.w_tiler.transform(X[:, self.half_step[1]:])
         X_hw  = self.hw_tiler.transform(X[self.half_step[0]:, self.half_step[1]:])
-        self.log.debug("Assembling overlapping tiles...")
+        logger.debug("Assembling overlapping tiles...")
         return da.concatenate([X_main, X_h, X_w, X_hw], axis=0)
     
     def inverse_transform(self, X):
@@ -1052,7 +1052,7 @@ class WindowFitter(BaseEstimator, TransformerMixin):
         dask.array.Array or np.ndarray
             Cropped (H', W', C) array; H' <= H, W' <= W
         """
-        self.log.debug("Transforming input data to match integer number of "
+        logger.debug("Transforming input data to match integer number of "
                   "windows...")
         # get the part of the array which divides evenly into windows
         X_ = X[:self.row_max_, :self.col_max_]
@@ -1134,7 +1134,7 @@ class TileStacker(BaseEstimator, TransformerMixin):
         dask.array.Array or numpy.ndarray
             Tiled (B, h, w, C) array
         """
-        self.log.debug("Reshaping array into tiles...")
+        logger.debug("Reshaping array into tiles...")
         #log.debug(self.X_tmpshape_, self.X_order_, self.X_hypertile_shape_)
         # adapt to channel dimension of input
         X_tmpshp = (*self.X_tmpshape_[:-1], X.shape[-1])
@@ -1146,8 +1146,8 @@ class TileStacker(BaseEstimator, TransformerMixin):
                 -1, *X_ht_shp
             )
         except Exception as e:
-            self.log.error(e)
-            self.log.debug(f"tmp: {self.X_tmpshape_}, ord: {self.X_order_}, "
+            logger.error(e)
+            logger.debug(f"tmp: {self.X_tmpshape_}, ord: {self.X_order_}, "
                            f"x_ht_shp: {self.X_hypertile_shape_}")
             raise
         return X_
@@ -1164,7 +1164,7 @@ class TileStacker(BaseEstimator, TransformerMixin):
         dask.array.Array
             Input (H, W, C) array (upon which fit was called)
         """
-        self.log.debug("Reshaping array into tiles...")
+        logger.debug("Reshaping array into tiles...")
         X_N_, X_new_shape_ = X.shape[0], X.shape[1:]
         # update channel dim
         old_shp = np.array((*self.X_old_shape_[:-1], X.shape[-1]))
@@ -1192,10 +1192,10 @@ class DimensionAdder(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         if len(X.shape) == 2:
-            self.log.debug("Adding a third (channel) dimension to array...")
+            logger.debug("Adding a third (channel) dimension to array...")
             return X.reshape(list(X.shape) + [1])
         elif len(X.shape) == 3:
-            self.log.debug("Leaving array shape alone...")
+            logger.debug("Leaving array shape alone...")
             return X
         else:
             raise ValueError("X should have two (row/col) or three dimensions (+channel)")
