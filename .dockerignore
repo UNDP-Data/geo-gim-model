@@ -1,0 +1,12 @@
+bin
+data
+disabled-github
+INFER
+TRAIN
+inference_dir
+logs
+MODELS
+PREDICTIONS
+processed
+tests
+new_scripts

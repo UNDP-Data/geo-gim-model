@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-tensorflow = "*"
+tensorflow = "2.10.0"
 matplotlib = "*"
 scipy = "*"
 scikit-learn = "*"
@@ -14,7 +14,6 @@ keras = "*"
 pandas = "*"
 geopandas = "*"
 numpy = "*"
-albumentations = "*"
 tqdm = "*"
 scikit-image = "*"
 cached-property = "*"
@@ -30,8 +29,15 @@ rasterio = "*"
 scrapy = "*"
 aiofiles = "*"
 twine = "*"
+tensorflow-addons = "*"
+distributed = "*"
+zarr = "*"
+imgaug = "*"
+albumentations = {extras = ["imgaug"], version = "*"}
+cufflinks = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.11"
+python_version = "3.10"
+python_full_version = "3.10.9"
