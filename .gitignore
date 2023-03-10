@@ -27,3 +27,7 @@ MODELS
 INFER
 TRAIN
 PREDICTIONS
+inference_dir
+logs
+new_scripts
+bin
