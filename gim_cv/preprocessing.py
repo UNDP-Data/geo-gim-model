@@ -13,7 +13,7 @@ import random
 
 import numpy as np
 import dask.array as da
-import albumentations as A
+import albumentations as albumentations
 from functools import partial
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -91,69 +91,69 @@ def strong_aug(
     """
     aug_list = []
     if p_rr90:
-        aug_list.append(A.RandomRotate90(p=p_rr90))
+        aug_list.append(albumentations.RandomRotate90(p=p_rr90))
     if p_hflip:
-        aug_list.append(A.HorizontalFlip(p=p_hflip))
+        aug_list.append(albumentations.HorizontalFlip(p=p_hflip))
     if fancy_pca is not None:
         aug_list.append(fancy_pca)
     if p_rgb_shift:
-        aug_list.append(A.RGBShift(p=p_rgb_shift,
+        aug_list.append(albumentations.RGBShift(p=p_rgb_shift,
                        r_shift_limit=(-15, 15),
                        g_shift_limit=(-15, 15),
                        b_shift_limit=(-15, 15)))
     if p_iaa_affine:
         aug_list.append(
-            A.IAAAffine(scale=1.0, translate_percent=(-0.1, 0.1), translate_px=None, rotate=0.0, shear=(-10, 10),
+            albumentations.IAAAffine(scale=1.0, translate_percent=(-0.1, 0.1), translate_px=None, rotate=0.0, shear=(-10, 10),
                         order=1, cval=0, mode='reflect', always_apply=False, p=p_iaa_affine)
         )
     if p_noise:
         aug_list.append(
-            A.OneOf([
-                A.IAAAdditiveGaussianNoise(),
-                A.GaussNoise(var_limit=(5., 20.)),
+            albumentations.OneOf([
+                albumentations.IAAAdditiveGaussianNoise(),
+                albumentations.GaussNoise(var_limit=(5., 20.)),
             ], p=p_noise)
         )
     if p_blur:
         aug_list.append(
-            A.OneOf([
-                A.MotionBlur(blur_limit=(3, 5), p=1.),
-                #A.MedianBlur(blur_limit=(3, 5), p=.1),
-                A.Blur(blur_limit=(3,4), p=1.),
+            albumentations.OneOf([
+                albumentations.MotionBlur(blur_limit=(3, 5), p=1.),
+                #albumentations.MedianBlur(blur_limit=(3, 5), p=.1),
+                albumentations.Blur(blur_limit=(3,4), p=1.),
             ], p=p_blur)
         )
     if p_ssr:
         aug_list.append(
-            A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=45, p=p_ssr)
+            albumentations.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=45, p=p_ssr)
         )
     if p_distort:
         aug_list.append(
-            A.OneOf([
-                #A.OpticalDistortion(p=0.3),
-                #A.GridDistortion(p=0.1),
-                A.IAAPiecewiseAffine(p=1.0),
+            albumentations.OneOf([
+                #albumentations.OpticalDistortion(p=0.3),
+                #albumentations.GridDistortion(p=0.1),
+                albumentations.IAAPiecewiseAffine(p=1.0),
             ], p=p_distort)
         )
     if p_sharpen:
-        aug_list.append(A.IAASharpen(p=p_sharpen))
+        aug_list.append(albumentations.IAASharpen(p=p_sharpen))
     if p_contrast:
         aug_list.append(
-            A.OneOf([
-                A.CLAHE(clip_limit=2),
-                #A.IAAEmboss(),
-                A.RandomContrast(),
+            albumentations.OneOf([
+                albumentations.CLAHE(clip_limit=2),
+                #albumentations.IAAEmboss(),
+                albumentations.RandomContrast(),
             ], p=p_contrast)
         )
     if p_brightness:
-        aug_list.append(A.RandomBrightness(p=p_brightness))
+        aug_list.append(albumentations.RandomBrightness(p=p_brightness))
     if p_hue_sat:
         aug_list.append(
-            A.HueSaturationValue(10,10,10,p=p_hue_sat)
+            albumentations.HueSaturationValue(10,10,10,p=p_hue_sat)
         )
     if p_gamma:
         aug_list.append(
-            A.RandomGamma(gamma_limit=(90, 110), p=p_gamma)
+            albumentations.RandomGamma(gamma_limit=(90, 110), p=p_gamma)
         )
-    return A.Compose(aug_list, p=p)
+    return albumentations.Compose(aug_list, p=p)
 
 
 def get_aug_datagen(rescale=1/255.,

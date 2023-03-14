@@ -23,10 +23,6 @@ tests/
 ## Adding the following as I see no reason to keep these files in the repo
 env-static.yml
 gim_cv_gpu_env.yml
-MODELS
-INFER
-TRAIN
-PREDICTIONS
 inference_dir
 logs
 new_scripts

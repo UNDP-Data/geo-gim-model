@@ -1,5 +1,5 @@
 # root dir
-project_dir     : &PROJECT_DIR /home/root
+project_dir     : &PROJECT_DIR ./
 # log level
 log_level : DEBUG
 # main data folder containing the folder listed in next paramters*/

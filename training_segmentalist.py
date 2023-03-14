@@ -26,14 +26,16 @@ import gim_cv.config as cfg
 import gim_cv.datasets as datasets
 import gim_cv.losses as losses
 from gim_cv.models.segmentalist import Segmentalist
-from gim_cv.preprocessing import get_aug_datagen, FancyPCA, strong_aug, balanced_oversample
-from gim_cv.training import pair_batch_generator, fancy_batch_generator
+from gim_cv.preprocessing import get_aug_datagen, FancyPCA, strong_aug, balanced_oversample, \
+    get_image_training_pipeline, get_binary_mask_training_pipeline
+from gim_cv.training import pair_batch_generator, fancy_batch_generator, TrainingDataset
 from gim_cv.utils import parse_kwarg_str
 
-log = logging.getLogger()
+logger = logging.getLogger()
+
 
 parser = argparse.ArgumentParser()
-
+parser.add_argument('-tt', '--training-geotiff', dest='training_geotiffs', nargs='+', default=None, help='A list of geotiff files to train on')
 parser.add_argument('-d', '--datasets', dest='datasets', type=str,
                     default='train_tif',
                     help='Comma delimited string of dataset tags. Available datasets are:\n'
@@ -42,13 +44,10 @@ parser.add_argument('-tsr', '--target-spatial-res', dest='target_spatial_resolut
                     help='spatial resolution to resample to. native resolution for all datasets if == 0.')
 # model features
 parser.add_argument('-pp', '--input-pyramid', dest='pyramid_pooling', action='store_true', help='Enable input pyramid')
-parser.add_argument('-npp', '--no-input-pyramid', dest='pyramid_pooling', action='store_false',
-                    help='Disable input pyramid')
+parser.add_argument('-npp', '--no-input-pyramid', dest='pyramid_pooling', action='store_false', help='Disable input pyramid')
 parser.set_defaults(pyramid_pooling=False)
-parser.add_argument('-ds', '--deep-supervision', dest='deep_supervision', action='store_true',
-                    help='Enable deep supervision')
-parser.add_argument('-nds', '--no-deep-supervision', dest='deep_supervision', action='store_false',
-                    help='Disable deep supervision')
+parser.add_argument('-ds', '--deep-supervision', dest='deep_supervision', action='store_true', help='Enable deep supervision')
+parser.add_argument('-nds', '--no-deep-supervision', dest='deep_supervision', action='store_false', help='Disable deep supervision')
 parser.set_defaults(deep_supervision=False)
 parser.add_argument('-lc', '--lambda-conv', dest='lambda_conv', action='store_true',
                     help='Replace main 3x3 convolutions in residual blocks with Lambda convolutions')
@@ -79,31 +78,31 @@ group.add_argument('-ncsag', '--no-channel-spatial-attention-gate', dest='csag',
 group.set_defaults(csag=False)
 # model hyperparameters
 parser.add_argument('-lb', '--layer-blocks', dest='layer_blocks', type=str, default='2,2,2,2',
-                    help=(
-                        'Comma-delimited list of the number of residual blocks per layer of the encoder. The last number fixes '
-                        'those in the bridge which is unique. The decoder mirrors these blocks excluding the bridge. The final '
-                        'block of the decoder uses the last_layer_decoder_blocks argument to fix the number of residual convblocks.'
-                    ))
+                   help=(
+                       'Comma-delimited list of the number of residual blocks per layer of the encoder. The last number fixes '
+                       'those in the bridge which is unique. The decoder mirrors these blocks excluding the bridge. The final '
+                       'block of the decoder uses the last_layer_decoder_blocks argument to fix the number of residual convblocks.'
+                   ))
 parser.add_argument('-ldb', '--last-decoder-layer-blocks', dest='last_decoder_layer_blocks', type=int, default=2,
-                    help='The number of residual conv blocks in the final decoder block.')
+                   help='The number of residual conv blocks in the final decoder block.')
 parser.add_argument('-if', '--initial-filters', dest='initial_filters', type=int, default=64,
-                    help='The number of filters in the first large-kernel-size ResNet convolution in the encoder.')
+                   help='The number of filters in the first large-kernel-size ResNet convolution in the encoder.')
 parser.add_argument('-rf', '--residual-filters', dest='residual_filters', type=str, default='128,256,512,1024',
-                    help=('Comma-delimited list of the number of filters in the encoder blocks. The last fixes '
-                          'the number of filters in the bridge block. The decoder blocks mirror these excluding the bridge. '
-                          'The final decoder block uses the same number of filters as the initial_filters argument.'))
+                   help=('Comma-delimited list of the number of filters in the encoder blocks. The last fixes '
+                         'the number of filters in the bridge block. The decoder blocks mirror these excluding the bridge. '
+                         'The final decoder block uses the same number of filters as the initial_filters argument.'))
 parser.add_argument('-ik', '--initial-kernel-size', dest='initial_kernel_size', type=int, default=7,
-                    help='The kernel size for the initial convolution in the encoder block. Usually ResNet style 7x7.')
+                   help='The kernel size for the initial convolution in the encoder block. Usually ResNet style 7x7.')
 parser.add_argument('-hk', '--head-kernel-size', dest='head_kernel_size', type=int, default=1,
-                    help='The kernel size for the head (final segmentation layer). Typically 1x1.')
+                   help='The kernel size for the head (final segmentation layer). Typically 1x1.')
 parser.add_argument('-cd', '--cardinality', dest='cardinality', type=int, default=1,
-                    help='The cardinality of ResNeXt grouped convolutions in main blocks (if lambda_conv is false).')
-# parser.add_argument('-ce', '--channel-expansion-factor', dest='channel_expansion_factor', type=int, default=2,
+                   help='The cardinality of ResNeXt grouped convolutions in main blocks (if lambda_conv is false).')
+#parser.add_argument('-ce', '--channel-expansion-factor', dest='channel_expansion_factor', type=int, default=2,
 #                   help='The factor by which the number of channels is expanded at the end of each encoder block.')
 parser.add_argument('-act', '--activation', dest='activation', type=str, default='relu',
-                    help='String name of activation function used throughout.')
+                   help='String name of activation function used throughout.')
 parser.add_argument('-dsmp', '--downsample', dest='downsample', type=str, default='pool',
-                    help='Mechanism used for downsampling feature maps: "pool" or "strides".')
+                   help='Mechanism used for downsampling feature maps: "pool" or "strides".')
 # training hyperparameters
 parser.add_argument('-s', '--patch-size', default=256, type=int, dest='patch_size')
 parser.add_argument('-ot', '--overlap-tiles', dest='overlapping_tiles', action='store_true',
@@ -115,9 +114,9 @@ parser.add_argument('-ep', '--epochs', default=100, type=int, help="no. training
 parser.add_argument('-bs', '--batch_size', default=4, type=int, help="batch_size", dest='batch_size')
 parser.add_argument('-l', '--loss-fn', dest='loss_fn', type=str, default='wbce_adaptive',
                     help='loss function name as string (looks in building_age.losses).'
-                         'optionally provide kwargs afterwards using a colon to delineate the '
-                         'beginning of comma-separated keyword args, e.g. '
-                         'custom_loss_fn:gamma=1.5,alpha=0.2')
+                    'optionally provide kwargs afterwards using a colon to delineate the '
+                    'beginning of comma-separated keyword args, e.g. '
+                    'custom_loss_fn:gamma=1.5,alpha=0.2')
 parser.add_argument('-opt', '--optimiser', dest='optimiser', default='adam', type=str,
                     help='gradient descent optimizer (adam, sgd or ranger)')
 parser.add_argument('-swa', '--stochastic-weight-averaging', dest='swa', action='store_true',
@@ -138,7 +137,7 @@ parser.add_argument('-vf', '--val-frac', dest='val_frac', type=float, default=0.
                     help="validation fraction")
 parser.add_argument('-tf', '--test-frac', dest='test_frac', type=float, default=0.,
                     help="test fraction")
-parser.add_argument('-fa', '--fancy-augs', dest='fancy_augs', default=True, action='store_true',
+parser.add_argument('-fa', '--fancy-augs', dest='fancy_augs', default=False, action='store_true',
                     help='Flag whether to use fancy augmentations (albumentations + FancyPCA)')
 parser.add_argument('-lr', '--lr-init', dest='lr_init', type=float, default=0.0001,
                     help="initial learning rate")
@@ -154,7 +153,7 @@ parser.add_argument('-ba', '--balanced-oversample', dest='balanced_oversample', 
                     help='oversample training arrays to balance different datasets. makes an "epoch" much longer.')
 # weight/parameter/array-saving-specific parameters
 parser.add_argument('-md', '--models-dir', dest='models_dir',
-                    default=str(cfg.models_path),  # str(cfg.models_path / Path('ebs_trained_models')),
+                    default=str(cfg.models_path), # str(cfg.models_path / Path('ebs_trained_models')),
                     help='directory in which to store model checkpoints and metrics')
 parser.add_argument('-dt', '--dump-test-data', dest='dump_test_data', default=False,
                     action='store_true', help='dump the test arrays to zarr')
@@ -166,14 +165,21 @@ parser.add_argument('-c', '--use-cache', dest='use_cache', default=True, action=
 parser.add_argument('-sc', '--save-to-cache', dest='save_to_cache', default=True, action='store_true',
                     help='save the preprocessed arrays to file for future training runs')
 
+
 args = parser.parse_args()
 
 # sort datasets so order not important
+
+
+
+
 args.datasets = ','.join(sorted(args.datasets.split(',')))
 
 if __name__ == '__main__':
 
     # assert tf.test.is_gpu_available(), "CHECK GPU AVAILABILITY! (eg /etc/docker/daemon.json default runtime)"
+
+
 
     np.random.seed(args.seed)
 
@@ -189,7 +195,7 @@ if __name__ == '__main__':
     if args.test_frac:
         train_val_test_split = (1 - args.val_frac - args.test_frac, args.val_frac, args.test_frac)
     else:
-        train_val_test_split = (1. - args.val_frac, args.val_frac)
+        train_val_test_split = (1.-args.val_frac, args.val_frac)
 
     # --- assemble training datasets
     # get dataset tags - sort to fix order to identify different permutations for array caching
@@ -197,20 +203,46 @@ if __name__ == '__main__':
 
     # get each of the training datasets requested
     tdsets = []
-    for ds_tag in dataset_tags:
-        ds = datasets.get_dataset(ds_tag)
-        rf = ds.spatial_resolution / args.target_spatial_resolution if args.target_spatial_resolution else 1.
-        tdsets.append(
-            ds.load_training_data(
-                batch_size=args.batch_size,
-                train_val_test_split=train_val_test_split,
-                seed=args.seed,
-                window_size=args.patch_size,
-                overlap_tiles=args.overlapping_tiles,
-                resample_factor=rf
+    geotiffs = args.training_geotiffs
+
+    if geotiffs is not None:
+
+        batch_generator = partial(pair_batch_generator,
+                                  batch_size=args.batch_size,
+                                  img_aug=get_aug_datagen(),  # simple augs (v/h flip) for brevity
+                                  mask_aug=get_aug_datagen(),  # simple augs (v/h flip) for brevity
+                                  seed=args.seed,
+                                  shuffle=False)
+        print(f"Training on datasets: {geotiffs}")
+        # arrange the geotiffs into a list of tuples of (raw, label) paths
+        mask_raw = [(raw, label) for raw, label in zip(geotiffs[::2], geotiffs[1::2])]
+        print(mask_raw)
+        for pair in mask_raw:
+            # Create training data from geotiffs
+            tds = TrainingDataset(
+                pair[0],
+                pair[1],
+                tag=pair[0].split('/')[-1].split('.')[0],
+                image_pipeline_factory=get_image_training_pipeline,
+                mask_pipeline_factory=get_binary_mask_training_pipeline,
+                batch_generator_fn=batch_generator
             )
-        )
-        print("Training Datasets::: ", tdsets)
+            tdsets.append(tds)
+    else:
+        for ds_tag in dataset_tags:
+            ds = datasets.get_dataset(ds_tag)
+            rf = ds.spatial_resolution/args.target_spatial_resolution if args.target_spatial_resolution else 1.
+            tdsets.append(
+                ds.load_training_data(
+                    batch_size=args.batch_size,
+                    train_val_test_split=train_val_test_split,
+                    seed=args.seed,
+                    window_size=args.patch_size,
+                    overlap_tiles=args.overlapping_tiles,
+                    resample_factor=rf
+                )
+            )
+
     # combine them into one big (composite) training dataset
     if len(tdsets) == 1:
         tds = tdsets[0]
@@ -234,38 +266,36 @@ if __name__ == '__main__':
         tds.prepare()
     # look for cached arrays if they're already there. this speeds up training considerably.
     else:
-        log.info(f"Searching for cached training data at {tds.cache_directory}...")
+        logger.info(f"Searching for cached training data at {tds.cache_directory}...")
         try:
             tds.load_prepared_arrays()
-            log.info(f"Using training data arrays cached at: {tds.cache_directory}")
+            logger.info(f"Using training data arrays cached at: {tds.cache_directory}")
         except (ValueError, FileNotFoundError, KeyError) as v:
-            log.warning("No cached training arrays found. Generating them...")
+            logger.warning("No cached training arrays found. Generating them...")
             tds.prepare()
-            log.info("Generating arrays:")
-            log.info(tds.X)
-            log.info(tds.y)
+            logger.info("Generating arrays:")
+            logger.info(tds.X)
+            logger.info(tds.y)
             if args.save_to_cache:
-                log.info(f"Saving processed training data to {tds.cache_directory}...")
+                logger.info(f"Saving processed training data to {tds.cache_directory}...")
                 t0 = pc()
                 try:
                     tds.save_prepared_arrays()
                 except KeyboardInterrupt:
                     tds.delete_prepared_arrays()
                     sys.exit(1)
-                log.warning(f"Arrays stored! took {pc() - t0:.2f}s!")
+                logger.warning(f"Arrays stored! took {pc()-t0:.2f}s!")
                 tds.load_prepared_arrays()
-                log.warning(f"Using training data arrays cached at: {tds.cache_directory}")
+                logger.warning(f"Using training data arrays cached at: {tds.cache_directory}")
 
-                # --- assign data generator for scaling, augmentations etc
-    # albumentations + fancyPCA => "fancy" augs. recommended.
     if args.fancy_augs:
-        log.warning("~~ Fancy augs on ~~")
+        logger.warning("~~ Fancy augs on ~~")
         # start distributed cluster for mapping augmentations
         client = Client(processes=False)
-        log.info("Calculating PCA decomposition of training RGBs...")
+        logger.info("Calculating PCA decomposition of training RGBs...")
         fpca = FancyPCA(tds.X_train, alpha_std=.3, p=1.0)
-        log.warning(f"Eigenvalues are {fpca.sampler.eig_vals}")
-        log.warning(f"Eigenvectors are {fpca.sampler.eig_vecs}")
+        logger.warning(f"Eigenvalues are {fpca.sampler.eig_vals}")
+        logger.warning(f"Eigenvectors are {fpca.sampler.eig_vecs}")
         augger = strong_aug(p=.8, fancy_pca=fpca)
         tds.batch_generator_fn = partial(
             fancy_batch_generator,
@@ -275,7 +305,7 @@ if __name__ == '__main__':
             seed=args.seed,
             shuffle_blocks_every_epoch=True,
             shuffle_within_blocks=True,
-            deep_supervision=args.deep_supervision,  # False
+            deep_supervision=args.deep_supervision, #False
             float32=True
         )
         aug_sfx = 'fancy'
@@ -286,10 +316,10 @@ if __name__ == '__main__':
             batch_size=args.batch_size,
             img_aug=get_aug_datagen(horizontal_flip=True,
                                     vertical_flip=True),
-            mask_aug=get_aug_datagen(horizontal_flip=True,  # args....
-                                     vertical_flip=True),
+            mask_aug=get_aug_datagen(horizontal_flip=True, #args....
+                                    vertical_flip=True),
             seed=args.seed,
-            # shuffle=True
+            #shuffle=True
         )
         aug_sfx = 'basic'
 
@@ -309,8 +339,8 @@ if __name__ == '__main__':
     lfastr = '_args_' + '_'.join([f'{k}={v:.2f}' for k, v in lf_kwargs.items()]) if lf_kwargs else ''
 
     # calculate number of training and validation steps
-    train_steps = tds.X_train.shape[0] // args.batch_size
-    valid_steps = tds.X_val.shape[0] // args.batch_size
+    train_steps = tds.X_train.shape[0]//args.batch_size
+    valid_steps = tds.X_val.shape[0]//args.batch_size
     print(f'train_steps={train_steps}')
     print(f'val_steps={valid_steps}')
     if args.use_val:
@@ -339,16 +369,15 @@ if __name__ == '__main__':
     elif optimiser == 'adam':
         opt = tf.keras.optimizers.Adam(
             learning_rate=args.lr_init, beta_1=0.9, beta_2=0.999, amsgrad=False
-        )  # check out RADAM?
+        ) # check out RADAM?
     elif optimiser == 'ranger':
-        radam = tfa.optimizers.RectifiedAdam(learning_rate=args.lr_init, min_lr=args.lr_min)
+        radam = tfa.optimizers.RectifiedAdam(lr=args.lr_init, min_lr=args.lr_min)
         opt = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
     else:
         raise ValueError(f"Optimiser {optimiser} not understood")
-
-    # if args.swa:
-        # print(opt)
-        # opt = SWA(opt, start_averaging=args.epochs - args.duration_swa, average_period=args.period_swa)
+    # stoachastic weight averaging if enabled
+    if args.swa:
+        opt = SWA(optimiser, start_averaging=args.epochs - args.duration_swa, average_period=args.period_swa)
 
     # specify training directory to save weights and metrics for this loss_fn and data ID
     # within models_dir
@@ -359,7 +388,7 @@ if __name__ == '__main__':
 
     # early stopping
     monitor = 'val_loss'
-    callbacks = [
+    callbacks=[
         tf.keras.callbacks.EarlyStopping(monitor, patience=args.patience)
     ]
 
@@ -384,14 +413,14 @@ if __name__ == '__main__':
     suffix = '-vl{val_loss:.5f}.ckpt'
     cp_fmt = cp_fmt + suffix
     cp_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=str(training_dir / Path(cp_fmt)),  # saved_model
+        filepath=str(training_dir / Path(cp_fmt)), # saved_model
         monitor=monitor,
         save_best_only=True,
         save_weights_only=True,
         verbose=1
     )
     cp_callback_trn = tf.keras.callbacks.ModelCheckpoint(
-        filepath=str(training_dir / Path(cp_fmt)),  # saved_model
+        filepath=str(training_dir / Path(cp_fmt)), # saved_model
         monitor='loss',
         save_best_only=True,
         save_weights_only=True,
@@ -433,17 +462,17 @@ if __name__ == '__main__':
 
     # option to save first arrays for quick check of consistency
     if args.dump_first_batches:
-        log.warning(f"Dumping first batches to {training_dir}...")
-        # training_dir.mkdir(parents=True, exist_ok=True)
+        logger.warning(f"Dumping first batches to {training_dir}...")
+        #training_dir.mkdir(parents=True, exist_ok=True)
         np.save(f'{training_dir}/X_train_{data_res_str}.npy', tds.X_train.blocks[0].compute())
         np.save(f'{training_dir}/y_train_{data_res_str}.npy', tds.y_train.blocks[0].compute())
         np.save(f'{training_dir}/X_val_{data_res_str}.npy', tds.X_val.compute())
         np.save(f'{training_dir}/y_val_{data_res_str}.npy', tds.y_val.compute())
-        # sys.exit(0)
+        #sys.exit(0)
     # option to dump test data
     if args.dump_test_data:
         if args.test_frac:
-            log.warning(f"Dumping testing arrays to {training_dir}...")
+            logger.warning(f"Dumping testing arrays to {training_dir}...")
             try:
                 tds.X_test.to_zarr(f'{training_dir}/X_test.zarr')
                 tds.y_test.to_zarr(f'{training_dir}/y_test.zarr')
@@ -458,12 +487,12 @@ if __name__ == '__main__':
     with open(f'{training_dir}/run_params.yml', 'w') as outfile:
         yaml.dump(vars(args), outfile, default_flow_style=False)
 
-    log.info("Start training...")
+    logger.info("Start training...")
     # --- train the model
     print('fit model')
     model.fit(
         tds.batch_gen_train(),
-        steps_per_epoch=train_steps,  # steps per epoch
+        steps_per_epoch=train_steps, # steps per epoch
         epochs=args.epochs,
         validation_data=tds.batch_gen_val(),
         validation_steps=valid_steps,

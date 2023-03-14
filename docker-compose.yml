@@ -5,8 +5,6 @@ services:
     build:
         context: .
         dockerfile: Dockerfile
-    ports:
-        - "8080:8080"
     volumes:
       # bind . on host to /home/root in container (allows editing code)
       #- .:/home/root
@@ -19,15 +17,18 @@ services:
       - type: bind
         source: ./data
         target: /home/root/data
-      #  read_only: true
+
       - type: bind
         source: ./saved_models/ebs_trained_models
         target: /home/root/saved_models/ebs_trained_models
+
       - type: bind
         source: ./results
         target: /home/root/results
-      # processed arrays
+
       - type: bind
         source: ./processed
         target: /home/root/processed
+
+
 

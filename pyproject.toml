@@ -11,6 +11,9 @@ readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     'tensorflow',
+    'tensorflow-addons',
+    'dask',
+    'distributed',
     'numpy',
     'scipy',
     'matplotlib',
@@ -23,6 +26,7 @@ dependencies = [
     'dask',
     'keras',
     'geopandas',
+    'regex',
     'numpy',
     'albumentations',
     'tqdm',
