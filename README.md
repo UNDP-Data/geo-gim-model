@@ -33,6 +33,15 @@ Create any directories that are missing exist.
 |   ├── requirements.txt
 ```
 
+The Sample dataset is the `Medellin_40cm.tif` that is set in the `datasets.py` module of the `gim_cv` package
+
+Ensure that you have both the raw and mask data in the `TRAIN/raster/Medellin_40cm.tif` and `TRAIN/mask/Medellin_ground_truth.tif` respectively. to run it on the sample dataset.
+By default this data is identifiable by the `train_tif` tag in the `datasets.py` module.
+So using the default settings, you can run the training script as follows:
+
+```
+docker exec -it <CONTAINER-ID> python3 training_segmentalist.py -d train_tif --epochs 10 --batch_size 32 --lr 0.001
+```
 ### Setting up the docker container
 To build the container, run the following command in the root directory:
 ```
