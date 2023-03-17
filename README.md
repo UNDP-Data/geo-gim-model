@@ -33,6 +33,15 @@ Create any directories that are missing exist.
 |   ├── requirements.txt
 ```
 
+The Sample dataset is the `Medellin_40cm.tif` that is set in the `datasets.py` module of the `gim_cv` package
+
+Ensure that you have both the raw and mask data in the `TRAIN/raster/Medellin_40cm.tif` and `TRAIN/mask/Medellin_ground_truth.tif` respectively. to run it on the sample dataset.
+By default this data is identifiable by the `train_tif` tag in the `datasets.py` module.
+So using the default settings, you can run the training script as follows:
+
+```
+docker exec -it <CONTAINER-ID> python3 training_segmentalist.py -d train_tif --epochs 10 --batch_size 32 --lr 0.001
+```
 ### Setting up the docker container
 To build the container, run the following command in the root directory:
 ```
@@ -112,38 +121,37 @@ optional arguments:
                         The number of filters in the first large-kernel-size ResNet convolution in the encoder.
   -rf RESIDUAL_FILTERS, --residual-filters RESIDUAL_FILTERS
                         Comma-delimited list of the number of filters in the residual convolutions in the encoder and decoder.
+  -ik -initial-kernel-size The kernel size for the initial convolution in the encoder block. Usually ResNet style 7x7.
+    -hk -head-kernel-size The kernel size for the head (final segmentation layer). Typically 1x1.
+    -cd -cardinality The cardinality of ResNeXt grouped convolutions in main blocks (if lambda_conv is false).
+    -act -activation String name of activation function used throughout.
+    -dsmp -downsample Mechanism used for downsampling feature maps: "pool" or "strides".
+    -s -patch-size No. of pixels per image patch used for training.
+    -ot -overlap-tiles Flag to toggle on overlapping tiles in training data (half-step).
+    -not -no-overlap-tiles Flag to toggle off overlapping tiles in training data (half-step) (no overlapping).
+    -ep -epochs No. of training epochs.
+    -bs -batch_size Batch size.
+    -l -loss-fn Loss function name as string (looks in building_age.losses). Optionally provide kwargs afterwards using a colon to delineate the beginning of comma-separated keyword args, e.g. `custom_loss_fn:gamma=1.5,alpha=0.2`.
+    -opt -optimiser Gradient descent optimizer (adam, sgd or ranger).
+    -swa -stochastic-weight-averaging Apply stochastic weight averaging to optimizer.
+    -nswa -no-stochastic-weight-averaging Do not apply stochastic weight averaging to optimizer.
+    -dswa -duration-swa No. of epochs before last where SWA is applied.
+    -pswa -period-swa Period in epochs over which to average weights with SWA.
+    -vl -use-val Switch: evaluate on validation data every epoch and track this.
+    -p -patience Patience.
+    -rs -seed Random seed.
+    -vf -val-frac Validation fraction.
+    -tf -test-frac Test fraction.
+    -fa -fancy-augs Flag whether to use fancy augmentations (albumentations + FancyPCA).
+    -lr -lr-init Initial learning rate.
+    -lrmin -lr-min Minimum learning rate if reduce LR on plateau callback used.
+    -lrf -lr-reduce-factor Multiplicative LR reduction factor for reduce LR on plateau callback.
+    -lrp -lr-reduce-patience Epochs patience for LR reduction application if reduce LR on plateau.
+    -ocp -use-ocp Enable one-cycle policy (not used atm).
+    -ba -balanced-oversample Oversample training arrays to balance different datasets. Makes an "epoch" much longer.
+    -md -model-dir Directory to save model checkpoints to.
+    -dt -dump-test-data Dump test arrays to zarr.
+    -da -dump-first-batches Precalculate first chunk of training array and dump to disk for inspection.
+    -c -use-cache Try to read preprocessed arrays from file if serialised.
+    -sc -save-to-cache Save preprocessed arrays to file for future training runs.
  ```
-
-- `-ik`, `--initial-kernel-size`: The kernel size for the initial convolution in the encoder block. Usually ResNet style 7x7.
-- `-hk`, `--head-kernel-size`: The kernel size for the head (final segmentation layer). Typically 1x1.
-- `-cd`, `--cardinality`: The cardinality of ResNeXt grouped convolutions in main blocks (if lambda_conv is false).
-- `-act`, `--activation`: String name of activation function used throughout.
-- `-dsmp`, `--downsample`: Mechanism used for downsampling feature maps: "pool" or "strides".
-- `-s`, `--patch-size`: No. of pixels per image patch used for training.
-- `-ot`, `--overlap-tiles`: Flag to toggle on overlapping tiles in training data (half-step).
-- `-not`, `--no-overlap-tiles`: Flag to toggle off overlapping tiles in training data (half-step) (no overlapping).
-- `-ep`, `--epochs`: No. of training epochs.
-- `-bs`, `--batch_size`: Batch size.
-- `-l`, `--loss-fn`: Loss function name as string (looks in building_age.losses). Optionally provide kwargs afterwards using a colon to delineate the beginning of comma-separated keyword args, e.g. `custom_loss_fn:gamma=1.5,alpha=0.2`.
-- `-opt`, `--optimiser`: Gradient descent optimizer (adam, sgd or ranger).
-- `-swa`, `--stochastic-weight-averaging`: Apply stochastic weight averaging to optimizer.
-- `-nswa`, `--no-stochastic-weight-averaging`: Do not apply stochastic weight averaging to optimizer.
-- `-dswa`, `--duration-swa`: No. of epochs before last where SWA is applied.
-- `-pswa`, `--period-swa`: Period in epochs over which to average weights with SWA.
-- `-vl`, `--use-val`: Switch: evaluate on validation data every epoch and track this.
-- `-p`, `--patience`: Patience.
-- `-rs`, `--seed`: Random seed.
-- `-vf`, `--val-frac`: Validation fraction.
-- `-tf`, `--test-frac`: Test fraction.
-- `-fa`, `--fancy-augs`: Flag whether to use fancy augmentations (albumentations + FancyPCA).
-- `-lr`, `--lr-init`: Initial learning rate.
-- `-lrmin`, `--lr-min`: Minimum learning rate if reduce LR on plateau callback used.
-- `-lrf`, `--lr-reduce-factor`: Multiplicative LR reduction factor for reduce LR on plateau callback.
-- `-lrp`, `--lr-reduce-patience`: Epochs patience for LR reduction application if reduce LR on plateau.
-- `-ocp`, `--use-ocp`: Enable one-cycle policy (not used atm).
-- `-ba`, `--balanced-oversample`: Oversample training arrays to balance different datasets. Makes an "epoch" much longer.
-- `-md`, `--model-dir`: Directory to save model checkpoints to.
-- `-dt`, `--dump-test-data`: Dump test arrays to zarr.
-- `-da`, `--dump-first-batches`: Precalculate first chunk of training array and dump to disk for inspection.
-- `-c`, `--use-cache`: Try to read preprocessed arrays from file if serialised.
-- `-sc`, `--save-to-cache`: Save preprocessed arrays to file for future training runs.
