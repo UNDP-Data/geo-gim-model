@@ -51,4 +51,4 @@ WORKDIR /home/root/
 COPY training_segmentalist.py /home/root/training_segmentalist.py
 
 # run the training scipts with arguments. These listed arguments are just an example / default arguments. You can change them as you wish.
-ENTRYPOINT ["python3", "-u", "training_segmentalist.py", "--datasets", "my_ds", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles"]
+ENTRYPOINT ["python3", "-u", "training_segmentalist.py", "--datasets", "train_tif", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles"]
