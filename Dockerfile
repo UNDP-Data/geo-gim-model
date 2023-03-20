@@ -29,7 +29,7 @@ WORKDIR /home/root/package
 COPY requirements.txt /home/root/requirements.txt
 
 # Install the requirements
-RUN python3 -m pip install -r /home/root/requirements.txt
+RUN python3 -m pip --default-timeout=1000 install -r /home/root/requirements.txt
 
 RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 
@@ -41,8 +41,9 @@ RUN python3 -m pip install build
 # Build the wheel file
 RUN python3 -m build
 
+
 # Find the wheel file and install it
-RUN python3 -m pip install  $(ls -alh dist/*.whl | awk '{print $9}')
+RUN python3 -m pip --default-timeout=1000 install  $(ls -alh dist/*.whl | awk '{print $9}')
 
 # Set the package directory back to root directory
 WORKDIR /home/root/
