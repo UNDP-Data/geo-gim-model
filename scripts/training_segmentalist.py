@@ -8,6 +8,7 @@ Uses datasets defined in gim_cv.datasets.
 import argparse
 import logging
 import operator
+import os
 import sys
 import uuid
 from functools import partial, reduce
@@ -22,6 +23,9 @@ import yaml
 from distributed import Client
 from tensorflow_addons.optimizers import SWA
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+print(sys.path)
 import gim_cv.config as cfg
 import gim_cv.datasets as datasets
 import gim_cv.losses as losses
@@ -127,7 +131,7 @@ parser.add_argument('-swa', '--stochastic-weight-averaging', dest='swa', action=
 parser.add_argument('-nswa', '--no-stochastic-weight-averaging', dest='swa', action='store_false',
                     help='do not apply stochastic weight averaging to optimizer')
 parser.set_defaults(swa=True)
-parser.add_argument('-dswa', '--duration-swa', dest='duration_swa', default=50, type=int,
+parser.add_argument('-dswa', '--duration-swa', dest='duration_swa', default=1, type=int,
                     help='number of epochs before last where SWA is applied')
 parser.add_argument('-pswa', '--period-swa', dest='period_swa', default=5, type=int,
                     help='period in epochs over which to average weights with SWA')
