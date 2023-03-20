@@ -34,7 +34,7 @@ RUN python3 -m pip install -r /home/root/requirements.txt
 RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 
 # Print the current working directory
-RUN echo "$PWD"
+# RUN echo "$PWD"
 
 RUN python3 -m pip install build
 
@@ -51,4 +51,4 @@ WORKDIR /home/root/
 COPY scripts/training_segmentalist.py /home/root/training_segmentalist.py
 
 # run the training scipts with arguments. These listed arguments are just an example / default arguments. You can change them as you wish.
-ENTRYPOINT ["python3", "-u", "training_segmentalist.py", "--datasets", "train_tif", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles"]
+ENTRYPOINT ["python3", "-u", "scripts/training_segmentalist.py", "--datasets", "train_tif", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles"]

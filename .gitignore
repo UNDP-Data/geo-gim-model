@@ -25,4 +25,3 @@ gim_cv_gpu_env.yml
 inference_dir
 logs
 new_scripts
-bin
