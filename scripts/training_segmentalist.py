@@ -22,6 +22,10 @@ import yaml
 from distributed import Client
 from tensorflow_addons.optimizers import SWA
 
+# when running this script in local (Not docker), this line is needed to add parent directory to path to allow
+# imports from gim_cv
+sys.path.append(str(Path(__file__).parent.parent))
+
 import gim_cv.config as cfg
 import gim_cv.datasets as datasets
 import gim_cv.losses as losses
