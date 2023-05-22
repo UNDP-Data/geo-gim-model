@@ -55,4 +55,4 @@ COPY scripts/training_segmentalist.py /home/root/training_segmentalist.py
 COPY scripts/run_inference_segmentalist.py /home/root/run_inference_segmentalist.py
 
 # run the training scipts with arguments. These listed arguments are just an example / default arguments. You can change them as you wish.
-ENTRYPOINT ["python3", "-u", "scripts/training_segmentalist.py", "--datasets", "my_ds", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles", "-l", "tversky_loss","-ep", "80"]
+ENTRYPOINT ["python3", "-u", "scripts/training_segmentalist.py", "-d", "my_ds", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles", "-l", "tversky_loss","-ep", "80"]

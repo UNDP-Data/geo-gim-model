@@ -902,13 +902,14 @@ ds_pots = Dataset(
 my_datasets = []
 
 my_ds = Dataset(tag='my_ds',
-                            image_paths = [
-                                'TRAIN/rasters/Kibera_30cm.tif',
+                image_paths = [
+                                'TRAIN/rasters/Medellin_40cm.tif',
                             ],
-                            mask_paths = [
-                                'TRAIN/masks/Kibera_30cm_ground_truth.tif',
+                mask_paths = [
+                                'TRAIN/masks/Medellin_ground_truth.tif',
                             ], # say this one doesn't have any ground truth
-                            spatial_resolution=0.4)
+                            spatial_resolution=0.3)
+
 #
 # # iirc one or two rasters caused issues initially so were ignored, and were
 # # generated again down the line as an additional "missing" dataset

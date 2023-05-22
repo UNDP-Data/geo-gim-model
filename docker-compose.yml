@@ -30,5 +30,8 @@ services:
         source: ./processed
         target: /home/root/processed
 
+      - type: bind
+        source: ./TRAIN
+        target: /home/root/TRAIN
 
 
