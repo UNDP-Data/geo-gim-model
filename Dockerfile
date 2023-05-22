@@ -29,20 +29,21 @@ WORKDIR /home/root/package
 COPY requirements.txt /home/root/requirements.txt
 
 # Install the requirements
-RUN python3 -m pip install -r /home/root/requirements.txt
+RUN python3 -m pip --default-timeout=1000 install -r /home/root/requirements.txt
 
 RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 
 # Print the current working directory
-RUN echo "$PWD"
+# RUN echo "$PWD"
 
 RUN python3 -m pip install build
 
 # Build the wheel file
 RUN python3 -m build
 
+
 # Find the wheel file and install it
-RUN python3 -m pip install  $(ls -alh dist/*.whl | awk '{print $9}')
+RUN python3 -m pip --default-timeout=1000 install  $(ls -alh dist/*.whl | awk '{print $9}')
 
 # Set the package directory back to root directory
 WORKDIR /home/root/
@@ -50,5 +51,8 @@ WORKDIR /home/root/
 # Copy the training script to the container
 COPY scripts/training_segmentalist.py /home/root/training_segmentalist.py
 
+# Copy the prediction script to the container
+COPY scripts/predict_segmentalist.py /home/root/predict_segmentalist.py
+
 # run the training scipts with arguments. These listed arguments are just an example / default arguments. You can change them as you wish.
-ENTRYPOINT ["python3", "-u", "training_segmentalist.py", "--datasets", "train_tif", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles"]
+ENTRYPOINT ["python3", "-u", "scripts/training_segmentalist.py", "--datasets", "my_ds", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles", "-l", "tversky_loss","-ep", "80"]

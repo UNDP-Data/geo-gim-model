@@ -8,8 +8,8 @@ __pycache__/
 *.log
 dist/
 build/
-*.tiff
-*.tif
+#*.tiff
+#*.tif
 images/
 *.pyc
 *.pyo
@@ -25,4 +25,3 @@ gim_cv_gpu_env.yml
 inference_dir
 logs
 new_scripts
-bin
