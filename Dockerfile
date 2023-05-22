@@ -51,5 +51,8 @@ WORKDIR /home/root/
 # Copy the training script to the container
 COPY scripts/training_segmentalist.py /home/root/training_segmentalist.py
 
+# Copy the prediction script to the container
+COPY scripts/predict_segmentalist.py /home/root/predict_segmentalist.py
+
 # run the training scipts with arguments. These listed arguments are just an example / default arguments. You can change them as you wish.
-ENTRYPOINT ["python3", "-u", "scripts/training_segmentalist.py", "--datasets", "train_tif", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles"]
+ENTRYPOINT ["python3", "-u", "scripts/training_segmentalist.py", "--datasets", "my_ds", "--target-spatial-res", "0.4", "--attention-gate", "--overlap-tiles", "-l", "tversky_loss","-ep", "80"]

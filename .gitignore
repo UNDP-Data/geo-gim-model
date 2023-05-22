@@ -8,8 +8,8 @@ __pycache__/
 *.log
 dist/
 build/
-*.tiff
-*.tif
+#*.tiff
+#*.tif
 images/
 *.pyc
 *.pyo
