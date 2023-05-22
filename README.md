@@ -40,7 +40,7 @@ By default this data is identifiable by the `train_tif` tag in the `datasets.py`
 So using the default settings, you can run the training script as follows:
 
 ```
-docker exec -it <CONTAINER-ID> python3 training_segmentalist.py -d train_tif --epochs 10 --batch_size 32 --lr 0.001
+docker exec -it <CONTAINER-ID> python3 training_segmentalist.py -d train_tif --epochs 10 --batch_size 32 -lr 0.001
 ```
 ### Setting up the docker container
 To build the container, run the following command in the root directory:

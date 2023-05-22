@@ -32,7 +32,7 @@ import gim_cv.losses as losses
 from gim_cv.models.segmentalist import Segmentalist
 from gim_cv.preprocessing import get_aug_datagen, FancyPCA, strong_aug, balanced_oversample, \
     get_image_training_pipeline, get_binary_mask_training_pipeline
-from gim_cv.training import pair_batch_generator, fancy_batch_generator, TrainingDataset
+from gim_cv.training import pair_batch_generator, fancy_batch_generator, TrainingDataset, CompositeTrainingDataset
 from gim_cv.utils import parse_kwarg_str
 
 logger = logging.getLogger()
@@ -206,9 +206,7 @@ if __name__ == '__main__':
     # get each of the training datasets requested
     tdsets = []
     geotiffs = args.training_geotiffs
-
     if geotiffs is not None:
-
         batch_generator = partial(pair_batch_generator,
                                   batch_size=args.batch_size,
                                   img_aug=get_aug_datagen(),  # simple augs (v/h flip) for brevity
@@ -218,7 +216,6 @@ if __name__ == '__main__':
         print(f"Training on datasets: {geotiffs}")
         # arrange the geotiffs into a list of tuples of (raw, label) paths
         mask_raw = [(raw, label) for raw, label in zip(geotiffs[::2], geotiffs[1::2])]
-        print(mask_raw)
         for pair in mask_raw:
             # Create training data from geotiffs
             tds = TrainingDataset(
