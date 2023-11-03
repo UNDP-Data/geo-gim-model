@@ -534,11 +534,25 @@ ds_train_tif = Dataset(
     image_paths = [cfg.train_data_tif_raster / Path(tif) for tif in sorted(os.listdir(cfg.train_data_tif_raster))],
     mask_paths = [cfg.train_data_tif_mask / Path(tif) for tif in sorted(os.listdir(cfg.train_data_tif_mask))]
 )
+
+ds_train_tif = Dataset(
+    tag='train_tif_manilla',
+    spatial_resolution=0.4,
+    image_paths = [cfg.train_tif_raster_manilla / Path(tif) for tif in sorted(os.listdir(cfg.train_tif_raster_manilla))],
+    mask_paths = [cfg.train_tif_mask_manilla / Path(tif) for tif in sorted(os.listdir(cfg.train_tif_mask_manilla))]
+)
+
 # second test dataset: Medellin orthophoto and mask; both are in geotiff format
 ds_predict_tif = Dataset(
     tag='infer_tif',
     spatial_resolution=0.4,
     image_paths = [cfg.infer_data_tif_path / Path(tif) for tif in sorted(os.listdir(cfg.infer_data_tif_path))]
+)
+
+ds_predict_tif = Dataset(
+    tag='infer_tif_manilla',
+    spatial_resolution=0.4,
+    image_paths = [cfg.infer_data_tif_path_manilla / Path(tif) for tif in sorted(os.listdir(cfg.infer_data_tif_path_manilla))]
 )
 
 #

@@ -173,13 +173,14 @@ class Segmentalist(keras.Model):
                 lambda_conv=self.lambda_conv,
                 act=self.act,
                 #channel_expansion_factor=self.channel_expansion_factor,
-                name=f'DecoderBlock_{ix+1}'
+                # name=f'DecoderBlock_{ix+1}'
+                name='DecoderBlock_{}'.format(ix+1)
             )
             for ix, (filters, n_res_blocks) in enumerate(zip(
                 reversed([self.initial_filters] + self.residual_filters[:-1]), reversed(self.layer_blocks)
             ))
         ]
-        # --- optional components --- multi-scale "pyramid" pooling downsample the input at multiple spatial
+        # --- optional components ---  "pyramid" pooling downsample the input at multiple spatial
         # resolutions and provide these as additional inputs to deeper encoder blocks usual implementations don't
         # feed the downsampled inputs at the lowest resolution to the deepest "bridge" block
         if self.pyramid_pooling:
@@ -381,9 +382,9 @@ class Segmentalist(keras.Model):
         # else:
         #     raise ValueError(f"Optimiser {opt} not understood")
 
-        # opt = tf.keras.optimizers.Adam(
-        #     learning_rate=row.lr_init, beta_1=0.9, beta_2=0.999, amsgrad=False
-        # )
+        opt = tf.keras.optimizers.legacy.Adam(
+            learning_rate=row.lr_init, beta_1=0.9, beta_2=0.999, amsgrad=False
+        )
         # select metrics
         metrics = [
             losses.tversky_index,
@@ -405,5 +406,3 @@ class Segmentalist(keras.Model):
             return model
         else:
             raise ValueError("No checkpoint found in directory!")    
-    
-    

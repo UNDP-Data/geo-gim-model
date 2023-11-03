@@ -337,9 +337,11 @@ class InferenceDataset(BaseInferenceDataset):
     @property
     def y_chunks(self):
         # copy y chunks from X
-        y_chunks = np.array(self.X.chunks)
+        x_chunks = self.X.chunks
         # assumption binary mask here
-        y_chunks[-1] = (1,)
+        y_chunks_list = list(x_chunks)
+        y_chunks_list[-1] = (1,)
+        y_chunks = tuple(y_chunks_list)
         return y_chunks
 
     @require_attr_true('prepared')
@@ -378,7 +380,7 @@ class InferenceDataset(BaseInferenceDataset):
         # schedule inference on slices
         self._y = self.X.map_blocks(
             model.predict,
-            chunks=self.y_chunks
+            chunks=self.y_chunks, dtype=np.float32
         )
         # set filename for output raster based on model used
         if self.pipeline.named_steps['resampler'].skip_:

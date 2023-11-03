@@ -183,6 +183,9 @@ if __name__ == '__main__':
 
     # assert tf.test.is_gpu_available(), "CHECK GPU AVAILABILITY! (eg /etc/docker/daemon.json default runtime)"
 
+    gpus = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(gpus[0], True)
+
     np.random.seed(args.seed)
 
     # set window/patch size
@@ -217,6 +220,7 @@ if __name__ == '__main__':
         # arrange the geotiffs into a list of tuples of (raw, label) paths
         mask_raw = [(raw, label) for raw, label in zip(geotiffs[::2], geotiffs[1::2])]
         for pair in mask_raw:
+            print(pair[0].split('/')[-1].split('.')[0])
             # Create training data from geotiffs
             tds = TrainingDataset(
                 pair[0],
@@ -224,9 +228,12 @@ if __name__ == '__main__':
                 tag=pair[0].split('/')[-1].split('.')[0],
                 image_pipeline_factory=get_image_training_pipeline,
                 mask_pipeline_factory=get_binary_mask_training_pipeline,
-                batch_generator_fn=batch_generator
+                batch_generator_fn=batch_generator,
+                batch_size = args.batch_size
             )
             tdsets.append(tds)
+            batch_size_value = tds.batch_size
+            print(batch_size_value)
     else:
         for ds_tag in dataset_tags:
             ds = datasets.get_dataset(ds_tag)
@@ -388,7 +395,7 @@ if __name__ == '__main__':
     # early stopping
     monitor = 'val_loss'
     callbacks = [
-        tf.keras.callbacks.EarlyStopping(monitor, patience=args.patience)
+        tf.keras.callbacks.EarlyStopping(monitor, patience=args.patience, verbose=1)
     ]
 
     # reduce the learning rate on plateaus
@@ -396,7 +403,7 @@ if __name__ == '__main__':
         tf.keras.callbacks.ReduceLROnPlateau(monitor=monitor,
                                              factor=args.lr_reduce_factor,
                                              patience=args.lr_reduce_patience,
-                                             min_lr=args.lr_min)
+                                             min_lr=args.lr_min, verbose=1)
     )
 
     # set up tensorboard to record metrics in a subdirectory
@@ -436,6 +443,11 @@ if __name__ == '__main__':
         ag = 'SAG'
     else:
         ag = None
+    print(ag)
+    print(args.encoder_cbam)
+    print(args.decoder_cbam)
+    print(args.pyramid_pooling)
+    print(args.deep_supervision)
     model = Segmentalist(
         n_classes=tds.y_train.shape[-1],
         layer_blocks=args.layer_blocks_,
@@ -498,3 +510,31 @@ if __name__ == '__main__':
         max_queue_size=50,
         callbacks=callbacks
     )
+
+    # def reset_keras_segmentalist():
+
+    #     tf.config.experimental.reset_memory_stats('GPU:0')
+    #     # tf.keras.backend.clear_session()
+    #     # tf.config.experimental.list_physical_devices('GPU')
+    #     gpus = tf.config.experimental.list_physical_devices('GPU')
+    #     tf.config.experimental.set_memory_growth(gpus[0], True)
+    #     print(tf.config.experimental.get_memory_usage('GPU:0'))
+
+    #     # sess = tf.keras.backend.get_session()
+    #     # print(sess)
+    #     # tf.keras.backend.clear_session()
+    #     # sess.close()
+    #     # sess = tf.keras.backend.get_session()
+    #     # # try:
+    #     # #     del classifier  # Replace 'classifier' with the appropriate variable name if needed
+    #     # # except:
+    #     # #     pass
+    #     # # print(gc.collect())  # If it's done something, you should see a number being outputted
+
+    #     # # Use the same config as you used to create the session
+    #     # config = tf.ConfigProto()
+    #     # config.gpu_options.per_process_gpu_memory_fraction = 1
+    #     # config.gpu_options.visible_device_list = "0"
+    #     # tf.keras.backend.set_session(tf.Session(config=config))
+    
+    # reset_keras_segmentalist()

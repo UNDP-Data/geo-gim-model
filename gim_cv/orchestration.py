@@ -458,7 +458,7 @@ async def gdal_translate(input_raster_path,
                   " skipping...")
         return out_file
     logger.debug(f"translating {input_raster_name} -> {out_file.parts[-1]}")
-    translate_cmd = ('gdal_translate -of GTiff -co COMPRESS=LZW -co TILED=YES '
+    translate_cmd = ('gdal_translate -of COG GTiff -co BIGTIFF=YES -co COMPRESS=LZW -co TILED=YES '
                      f'-outsize {size_pct}% {size_pct}% -r bilinear '
                      f'{input_raster_path} {out_file}')
     await open_subprocess(translate_cmd)

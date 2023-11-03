@@ -858,6 +858,7 @@ class Tiler(BaseEstimator, TransformerMixin):
             lib = np
         else:
             raise ValueError("array data type not understood")
+        y = lib.concatenate(X_out_components)
         return lib.concatenate(X_out_components)
 
     def inverse_transform(self, X, y=None):
